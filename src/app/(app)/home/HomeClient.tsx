@@ -16,6 +16,7 @@ import { comboBooks } from "@/app/data/combo";
 import { romanceBooks } from "@/app/data/romance-books";
 import UserReviews from "@/components/home/UserReviews";
 import Footer from "@/components/home/Footer";
+import { SideCart } from "@/components/cart/sideCart";
 
 export default function HomeClient() {
   return (
@@ -46,8 +47,10 @@ export default function HomeClient() {
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" className="relative">
               <Heart className="h-5 w-5" />
-              <span className="sr-only">Wishlist</span>
+              <span className="sr-only">Wishlist </span>
             </Button>
+
+            <SideCart />
             <div className="flex items-center gap-3 bg-gray-50 rounded-full px-4 py-2">
               <span className="text-lg font-semibold text-gray-900">
                 ₹ 0.00
