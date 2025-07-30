@@ -174,7 +174,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                 {currentProduct?.name}
               </h1>
               <p className="text-gray-600 font-medium">
-                SOLD BY DELHI BOOK MARKET
+                SOLD BY DELHI BOOK MARKET.
               </p>
             </div>
 
