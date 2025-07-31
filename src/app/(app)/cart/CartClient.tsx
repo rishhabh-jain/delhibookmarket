@@ -42,20 +42,18 @@ export default function CartClient() {
   };
 
   const handleCheckout = async () => {
+    console.log(cartItems);
     const result = await sendCartToWooCommerce(cartItems);
 
     console.log(result);
 
-    if (result.success) {
-      if (result.outOfStockProducts.length > 0) {
-        alert("Some items are out of stock");
-
-        return;
-      }
-
+    if (result.status === "success") {
+      // if (result.outOfStockProducts.length > 0) {
+      //   alert("Some items are out of stock");
+      //   return;
+      // }
       // router.push(result.redirect_url);
-
-      window.location.href = result.redirect_url;
+      // window.location.href = result.checkout_url;
     } else {
       alert("Something went wrong!");
     }

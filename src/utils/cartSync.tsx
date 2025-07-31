@@ -9,7 +9,7 @@ export async function sendCartToWooCommerce(
         "Content-Type": "application/json",
       },
       credentials: "include", // important for cookie-based cart session
-      body: JSON.stringify({ cart: cartItems }),
+      body: JSON.stringify({ products: cartItems }),
     }
   );
 
