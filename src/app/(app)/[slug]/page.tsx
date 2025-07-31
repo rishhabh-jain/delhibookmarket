@@ -1,17 +1,12 @@
 import React from "react";
 import ProductClient from "../product/[id]/productClient";
 
-export const revalidate = 259200; // 72 hours in seconds
-
 async function fetchProduct(slug: string) {
   try {
     const response = await fetch(
       `${
         process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-      }/api/get-single-product?slug=${slug}`,
-      {
-        cache: "force-cache", // Cache the product data
-      }
+      }/api/get-single-product?slug=${slug}`
     );
 
     if (!response.ok) {

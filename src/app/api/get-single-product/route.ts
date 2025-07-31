@@ -40,27 +40,20 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      if (!slugRes.data.length) {
-        return NextResponse.json(
-          { error: "Product not found" },
-          { status: 404 }
-        );
-      }
-
       res = { data: slugRes.data[0] };
     }
 
-    if (
-      res?.data.stock_status !== "instock" ||
-      (res.data.stock_quantity !== null && res.data.stock_quantity <= 0)
-    ) {
-      return NextResponse.json(
-        { error: "Product is out of stock" },
-        { status: 404 }
-      );
-    }
+    // if (
+    //   res?.data.stock_status !== "instock" ||
+    //   (res.data.stock_quantity !== null && res.data.stock_quantity <= 0)
+    // ) {
+    //   return NextResponse.json(
+    //     { error: "Product is out of stock" },
+    //     { status: 404 }
+    //   );
+    // }
 
-    return NextResponse.json(res.data);
+    return NextResponse.json(res?.data);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Error fetching product:", error);

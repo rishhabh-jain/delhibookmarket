@@ -113,7 +113,7 @@ export default function HomePageCarousel({
                   {product.stock_quantity <= 5 &&
                     product.stock_quantity > 0 && (
                       <Badge className="absolute top-1 right-1 bg-orange-500 text-xs px-1 py-0">
-                        {product.stock_quantity} left
+                        {/* {product.stock_quantity} left */}
                       </Badge>
                     )}
                   {product.stock_quantity === 0 && (

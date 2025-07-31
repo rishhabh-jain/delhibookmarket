@@ -2,37 +2,37 @@ import Link from "next/link";
 
 const categories = [
   {
-    id: 1,
+    id: 555,
     name: "Best selling",
     icon: "check-circle",
     color: "bg-black",
   },
   {
-    id: 2,
+    id: 560,
     name: "New arrivals",
     icon: "new-badge",
     color: "bg-orange-400",
   },
   {
-    id: 3,
+    id: 745,
     name: "Box sets",
     icon: "books",
     color: "bg-blue-500",
   },
   {
-    id: 4,
+    id: 538,
     name: "Fiction books",
     icon: "person-walking",
     color: "bg-purple-500",
   },
   {
-    id: 5,
+    id: 539,
     name: "Finance",
     icon: "chart",
     color: "bg-yellow-500",
   },
   {
-    id: 6,
+    id: 555,
     name: "Non Fiction",
     icon: "crown",
     color: "bg-amber-500",
@@ -46,7 +46,7 @@ export default function CategoryNav() {
         {categories.map((category) => (
           <Link
             key={category.id}
-            href={`/category/${category.id}`}
+            href={`/product-category/${category.id}`}
             className="flex flex-col items-center justify-center p-2 border rounded-lg hover:bg-gray-50"
           >
             <div

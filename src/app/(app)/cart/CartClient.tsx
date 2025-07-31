@@ -11,6 +11,7 @@ import { useCart } from "@/context/CartContext";
 import { sendCartToWooCommerce } from "@/utils/cartSync";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import DeliveryChecker from "@/components/DeliveryChecker";
 
 // Mock useCart hook - replace with your actual implementation
 
@@ -227,6 +228,10 @@ export default function CartClient() {
             ))}
           </div>
 
+          <div className="mx-2 border rounded-lg p-4">
+            <DeliveryChecker />
+          </div>
+
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="sticky top-4">
@@ -255,16 +260,17 @@ export default function CartClient() {
                   <span>₹{total.toFixed(2)}</span>
                 </div>
 
-                <Button
-                  size="lg"
-                  className="w-full"
-                  onClick={handleCheckout}
-                  disabled={items.some(
-                    (item) => item.stock_status === "outofstock"
-                  )}
-                >
-                  Proceed to Checkout
-                </Button>
+                <Link href="/checkout">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    disabled={items.some(
+                      (item) => item.stock_status === "outofstock"
+                    )}
+                  >
+                    Proceed to Checkout
+                  </Button>
+                </Link>
 
                 {items.some((item) => item.stock_status === "outofstock") && (
                   <p className="text-sm text-destructive mt-2 text-center">

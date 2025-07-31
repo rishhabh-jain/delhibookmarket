@@ -17,7 +17,7 @@ export const mangaBooks = [
         alt: "I Had That Same Dream Again",
       },
     ],
-    stock_quantity: 1,
+    stock_quantity: 100,
     slug: "i-had-that-same-dream-again-by-yoru-sumino-paperback",
   },
   {

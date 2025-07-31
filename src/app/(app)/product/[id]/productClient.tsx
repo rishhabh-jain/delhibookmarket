@@ -21,6 +21,11 @@ import Footer from "@/components/home/Footer";
 import UserReviews from "@/components/home/UserReviews";
 import { ProductDescription } from "@/components/product/HTMLDescriptionRendered";
 import { useCart } from "@/context/CartContext";
+import {
+  DeliveryInfo,
+  DeliveryTimeEstimator,
+} from "@/utils/DeliveryTimeEstimator";
+import BookSearchBar from "@/components/search/Searchbar";
 
 interface WooProduct {
   id: number;
@@ -77,6 +82,7 @@ export default function ProductClient({ product }: ProductClientProps) {
     minutes: 46,
     seconds: 54,
   });
+  const [deliveryData, setDeliveryData] = useState<DeliveryInfo | null>(null);
 
   const currentProduct = product;
 
@@ -135,11 +141,7 @@ export default function ProductClient({ product }: ProductClientProps) {
       <Header />
       <section className="container mx-auto px-4 lg:px-6 py-6">
         <div className="relative max-w-2xl mx-auto">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          <Input
-            className="pl-12 pr-4 bg-white border-gray-200 rounded-full h-14 text-lg shadow-sm focus:shadow-md transition-shadow"
-            placeholder="Search by Title, Author, or ISBN..."
-          />
+          <BookSearchBar />
         </div>
       </section>
       <div className="max-w-6xl mx-auto px-6  bg-white">
@@ -390,17 +392,41 @@ export default function ProductClient({ product }: ProductClientProps) {
             <h4 className="font-medium text-gray-700 mb-3">
               Check Availability At
             </h4>
-            <div className="flex gap-3">
-              <Input
-                type="text"
-                placeholder="Enter Pincode/ Zipcode"
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-                className="flex-1"
-              />
-              <Button className="bg-red-500 hover:bg-red-600 text-white px-8">
-                CHECK
-              </Button>
+            <div className="flex flex-col my-1">
+              <div className="flex">
+                <Input
+                  type="text"
+                  placeholder="Enter Pincode/ Zipcode"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  className="bg-red-500 hover:bg-red-600 text-white px-8"
+                  onClick={() => {
+                    const data = DeliveryTimeEstimator(pincode);
+                    setDeliveryData(data);
+                  }}
+                >
+                  CHECK
+                </Button>
+              </div>
+
+              {deliveryData && (
+                <div className="mt-4 p-4 rounded-lg border bg-gray-50 text-sm text-gray-800">
+                  <p>
+                    <span className="font-semibold text-gray-900">
+                      Delivery in:
+                    </span>{" "}
+                    {deliveryData.days !== null
+                      ? `${deliveryData.days} day(s)`
+                      : "N/A"}
+                  </p>
+                  {deliveryData.note && (
+                    <p className="mt-1 text-gray-600">{deliveryData.note}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

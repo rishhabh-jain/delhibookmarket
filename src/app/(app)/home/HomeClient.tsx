@@ -17,6 +17,8 @@ import { romanceBooks } from "@/app/data/romance-books";
 import UserReviews from "@/components/home/UserReviews";
 import Footer from "@/components/home/Footer";
 import { SideCart } from "@/components/cart/sideCart";
+import { Chaty } from "@/components/header-footer/Chaty";
+import BookSearchBar from "@/components/search/Searchbar";
 
 export default function HomeClient() {
   return (
@@ -80,15 +82,10 @@ export default function HomeClient() {
       </header>
 
       {/* Search Section */}
-      <section className="container mx-auto px-4 lg:px-6 py-6">
-        <div className="relative max-w-2xl mx-auto">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          <Input
-            className="pl-12 pr-4 bg-white border-gray-200 rounded-full h-14 text-lg shadow-sm focus:shadow-md transition-shadow"
-            placeholder="Search by Title, Author, or ISBN..."
-          />
-        </div>
-      </section>
+
+      <div className="container mx-auto px-4 lg:px-6 pt-6 pb-3">
+        <BookSearchBar />
+      </div>
 
       {/* Flash Sale Banner */}
       <section className="container mx-auto px-4 lg:px-6">
@@ -355,11 +352,7 @@ export default function HomeClient() {
       </div>
 
       {/* Chat Button */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <Button className="h-14 w-14 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-          <span className="text-2xl">💬</span>
-        </Button>
-      </div>
+      <Chaty />
     </main>
   );
 }
