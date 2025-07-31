@@ -48,12 +48,15 @@ export default function CartClient() {
     console.log(result);
 
     if (result.status === "success") {
+      if (result.session_id) {
+        localStorage.setItem("woo_session_id", result.session_id);
+      }
       // if (result.outOfStockProducts.length > 0) {
       //   alert("Some items are out of stock");
       //   return;
       // }
       // router.push(result.redirect_url);
-      // window.location.href = result.checkout_url;
+      window.location.href = result.checkout_url;
     } else {
       alert("Something went wrong!");
     }
