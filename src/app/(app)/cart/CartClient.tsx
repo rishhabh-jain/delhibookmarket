@@ -53,9 +53,9 @@ export default function CartClient() {
         return;
       }
 
-      router.push(result.checkout_url);
+      // router.push(result.redirect_url);
 
-      window.location.href = result.checkout_url;
+      window.location.href = result.redirect_url;
     } else {
       alert("Something went wrong!");
     }
