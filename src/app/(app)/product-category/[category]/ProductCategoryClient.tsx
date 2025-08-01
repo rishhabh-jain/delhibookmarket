@@ -107,10 +107,11 @@ export default function ProductCategoryClient({
     refetch,
   } = useInfiniteQuery({
     queryKey: ["products", category, debouncedSearchTerm, sortBy],
+    // @ts-expect-error - ProductsResponse nextPage type mismatch
     queryFn: ({ pageParam = 1 }) =>
       fetchProducts(category, pageParam, 20, debouncedSearchTerm, sortBy),
     getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? lastPage.nextPage : undefined,
+      lastPage.hasNextPage ? (lastPage.nextPage as number) : undefined,
     initialData:
       initialProducts.length > 0
         ? {
