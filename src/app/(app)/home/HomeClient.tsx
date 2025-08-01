@@ -19,76 +19,16 @@ import Footer from "@/components/home/Footer";
 import { SideCart } from "@/components/cart/sideCart";
 import { Chaty } from "@/components/header-footer/Chaty";
 import BookSearchBar from "@/components/search/Searchbar";
+import Header from "@/components/header-footer/Header";
 
 export default function HomeClient() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm shadow-sm border-b">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:px-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Menu</span>
-            </Button>
-            <Link href="/" className="flex items-center gap-3">
-              <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 p-2">
-                <div className="h-full w-full bg-white rounded-sm opacity-90"></div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-gray-900">
-                  Delhi Book Market
-                </span>
-                <span className="text-xs text-gray-500 hidden sm:block">
-                  Your Literary Destination
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Heart className="h-5 w-5" />
-              <span className="sr-only">Wishlist </span>
-            </Button>
-
-            <SideCart />
-            <div className="flex items-center gap-3 bg-gray-50 rounded-full px-4 py-2">
-              <span className="text-lg font-semibold text-gray-900">
-                ₹ 0.00
-              </span>
-              <Link href="/cart">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative h-8 w-8"
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-red-500">
-                    0
-                  </Badge>
-                  <span className="sr-only">Cart</span>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-red-600 to-red-500 py-2 text-center text-white">
-          <span className="font-medium tracking-wide">
-            FREE SHIPPING ON ORDERS ABOVE ₹499
-          </span>
-        </div>
-      </header>
-
-      {/* Search Section */}
-
-      <div className="container mx-auto px-4 lg:px-6 pt-6 pb-3">
-        <BookSearchBar />
-      </div>
+      <Header />
 
       {/* Flash Sale Banner */}
-      <section className="container mx-auto px-4 lg:px-6">
+      <section className="container mx-auto px-4 lg:px-6 my-2">
         <Card className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-500 to-red-600 border-0 shadow-2xl">
           <CardContent className="px-6 py-4">
             <div className="flex items-center justify-between">

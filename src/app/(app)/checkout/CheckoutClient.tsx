@@ -8,7 +8,9 @@ import {
   Lock,
   Loader2,
   CheckCircle,
-  UserPlus,
+  Minus,
+  Plus,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +20,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -33,19 +37,39 @@ import axios from "axios";
 import { Controller, useForm } from "react-hook-form";
 import { useDebounce } from "@uidotdev/usehooks";
 import StockCheckModal from "./StockCheckModal";
+import { useRouter } from "next/navigation";
+import BookLoadingModal from "@/components/loading/CheckoutLoading";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { checkoutSchema } from "@/Schemma/CheckOutSchemma";
+import z from "zod";
+import { useAlert } from "@/context/AlertContext";
 
 // Mock useCart hook - replace with your actual implementation
-interface CheckoutFormData {
-  email: string;
-  first_name: string;
-  last_name: string;
-  address_1: string;
-  address_2?: string; // optional field
-  city: string;
-  state: string;
-  postcode: string;
-  country: string;
-  phone: string;
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (response: any) => void;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: {
+    color: string;
+  };
+}
+
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay: any;
+  }
 }
 
 interface StockIssueItem {
@@ -59,9 +83,53 @@ interface StockIssueItem {
 interface StockCheckResponse {
   out_of_stock_list: StockIssueItem[];
 }
+type CheckoutFormData = z.infer<typeof checkoutSchema>; // or define it manually if not using zod
+
+const indianStates = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+];
 
 export default function CheckoutPage() {
-  const { items, total, itemCount, updateQuantity, removeItem } = useCart();
+  const { items, total, itemCount, updateQuantity, removeItem, canAddToCart } =
+    useCart();
+  const { showToast } = useAlert();
+
+  const router = useRouter();
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [createAccount, setCreateAccount] = useState(false);
@@ -73,7 +141,8 @@ export default function CheckoutPage() {
   const [isFormPopulated, setIsFormPopulated] = useState(false);
   const [outOfStockList, setOutOfStockList] = useState<StockIssueItem[]>([]);
   const [isCheckingStock, setIsCheckingStock] = useState(false);
-  const [CODcharges, setCodCharges] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -84,7 +153,9 @@ export default function CheckoutPage() {
     watch,
     control,
     formState: { errors },
-  } = useForm<CheckoutFormData>();
+  } = useForm<CheckoutFormData>({
+    resolver: zodResolver(checkoutSchema),
+  });
 
   const emailValue = watch("email"); // this will give you the current value of 'email'
   const shippingCost = 39;
@@ -210,12 +281,32 @@ export default function CheckoutPage() {
     }
   };
 
+  const loadScript = useCallback((src: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      // Check if script is already loaded
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }, []);
+
   const handleCheckout = async (data: CheckoutFormData) => {
-    checkOutOfStock();
+    setIsSubmitting(true);
     try {
+      await checkOutOfStock(); // optional: await this if it's async
+
       const PAYMENT_METHOD = paymentMethod;
-      const PAYMENT_METHOD_TITLE = "TODO";
-      const SET_PAID = "FALSE";
+      const PAYMENT_METHOD_TITLE =
+        paymentMethod === "cod" ? "cod" : "online_payment"; // replace with proper name
+      const SET_PAID = "false"; //
+
       const BILLING = {
         first_name: data.first_name,
         last_name: data.last_name,
@@ -227,6 +318,7 @@ export default function CheckoutPage() {
         email: data.email,
         phone: data.phone,
       };
+
       const SHIPPING = {
         first_name: data.first_name,
         last_name: data.last_name,
@@ -236,9 +328,12 @@ export default function CheckoutPage() {
         postcode: data.postcode,
         country: data.country,
       };
-      const LINE_ITEMS = items.map((item) => {
-        return { product_id: item.id, quantity: item.quantity };
-      });
+
+      const LINE_ITEMS = items.map((item) => ({
+        product_id: item.id,
+        quantity: item.quantity,
+      }));
+
       const FEE_LINES = [
         {
           name: "COD Charges",
@@ -246,21 +341,107 @@ export default function CheckoutPage() {
           tax_status: "none",
         },
       ];
-      const response = await axios.post("/api/create-woo-order", {
+
+      // 1️⃣ Create WooCommerce order
+      const wooRes = await axios.post("/api/create-woo-order", {
         payment_method: PAYMENT_METHOD,
         payment_method_title: PAYMENT_METHOD_TITLE,
         set_paid: SET_PAID,
         billing: BILLING,
         shipping: SHIPPING,
         line_items: LINE_ITEMS,
-        fee_lines: paymentMethod === "cod" ? FEE_LINES : [],
+        fee_lines: PAYMENT_METHOD === "cod" ? FEE_LINES : [],
       });
-      console.log(response.data);
+
+      const wooOrderData = wooRes.data.data;
+
+      // 2️⃣ COD? Skip Razorpay and redirect
+      if (PAYMENT_METHOD === "cod") {
+        router.push(`/order-success?order_id=${wooOrderData.id}`);
+        return;
+      }
+
+      // 3️⃣ Load Razorpay checkout script
+      const scriptLoaded = await loadScript(
+        "https://checkout.razorpay.com/v1/checkout.js"
+      );
+
+      if (!scriptLoaded) {
+        alert(
+          "Payment system failed to load. Please check your internet connection."
+        );
+        return;
+      }
+
+      console.log(wooOrderData);
+
+      // 4️⃣ Create Razorpay order
+      const razorpayRes = await axios.post("/api/create-razorpay-order", {
+        amountInRupees: Math.round(total), // total in ₹, backend will convert to paise
+        wooOrderId: wooOrderData.id,
+      });
+
+      const razorpayOrderData = razorpayRes.data;
+
+      // 5️⃣ Razorpay checkout config
+      const options: RazorpayOptions = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        amount: razorpayOrderData.amount,
+        currency: "INR",
+        name: "Delhi Book Market",
+        description: "Book Order Payment",
+        order_id: razorpayOrderData.id, // 🔥 Fix: should be Razorpay's order ID
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: async function (response: any) {
+          setIsVerifyingPayment(true);
+          // 👇 Hit your verification route
+          await fetch("/api/verify-razorpay-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              wooOrderId: wooOrderData.id,
+            }),
+          });
+          setIsVerifyingPayment(false);
+          router.push(`/order-success?order_id=${wooOrderData.id}`);
+        },
+        prefill: {
+          name: data.first_name + " " + data.last_name,
+          email: data.email,
+          contact: data.phone,
+        },
+        theme: {
+          color: "#F37254",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
     } catch (error) {
-      console.log(error);
-      alert("Unexpected error occured");
+      console.error("Checkout Error:", error);
+      alert("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // const handleTestForm = () => {
+  //   reset({
+  //     email: "tester28@gmail.com",
+  //     first_name: "THIS IS A TEST",
+  //     last_name: "ORDER",
+  //     address_1: "TESTING ADDRESS STREET NO TEST 28 _ ADDRESS LINE 1",
+  //     address_2: "TESTING ADDRESS STREET NO TEST 28 _ ADDRESS LINE 2",
+  //     city: "TESTING CITY",
+  //     state: "haryana",
+  //     postcode: "122011",
+  //     country: "india",
+  //     phone: "9999999999",
+  //   });
+  // };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
@@ -281,12 +462,19 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
               <span className="text-white font-bold text-sm">D</span>
             </div>
             <span className="font-semibold text-lg">delhi book market</span>
+          </Link>
+
+          <Link
+            href="/cart"
+            className="text-sm text-blue-600 hover:underline font-medium"
+          >
+            ← Back to Cart
           </Link>
         </div>
       </header>
@@ -329,42 +517,126 @@ export default function CheckoutPage() {
                             height={60}
                             className="rounded border"
                           />
-                          <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {item.quantity}
-                          </span>
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{item.name}</p>
+                          <p className="font-medium text-sm mb-1">
+                            {item.name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            ₹ {item.price.toFixed(2)}
+                          </p>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center border rounded">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                onClick={() =>
+                                  updateQuantity(
+                                    item.id,
+                                    Math.max(1, item.quantity - 1)
+                                  )
+                                }
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="px-3 py-1 text-sm font-medium min-w-[2rem] text-center">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                onClick={() =>
+                                  updateQuantity(item.id, item.quantity + 1)
+                                }
+                                disabled={!canAddToCart(item.id, 1)}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+
+                            {/* Remove Button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                if (items.length <= 1) {
+                                  showToast({
+                                    variant: "warning",
+                                    message:
+                                      "Checkout must have atleast 1 item",
+                                  });
+                                  return;
+                                }
+                                removeItem(item.id);
+                              }}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
-                        <p className="font-semibold">₹ {item.price}</p>
+
+                        {/* Item Total */}
+                        <div className="text-right">
+                          <p className="font-semibold">
+                            ₹ {(item.price * item.quantity).toFixed(2)}
+                          </p>
+                        </div>
                       </div>
                     ))}
-                    <div className="border-t pt-4 space-y-2">
-                      <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>₹ {total}</span>
+
+                    {/* Show message if cart is empty */}
+                    {items.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>Your cart is empty</p>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Shipping</span>
-                        <span>₹ {shippingCost}</span>
-                      </div>
-                      {paymentMethod === "cod" && (
+                    )}
+
+                    {items.length > 0 && (
+                      <div className="border-t pt-4 space-y-2">
                         <div className="flex justify-between">
-                          <span>COD charges</span>
-                          <span>₹ {50}</span>
+                          <span>Subtotal</span>
+                          <span>₹ {total.toFixed(2)}</span>
                         </div>
-                      )}
-                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                        <span>Total</span>
-                        <span>₹ {finalTotal}</span>
+                        <div className="flex justify-between">
+                          <span>Shipping</span>
+                          <span>₹ {shippingCost.toFixed(2)}</span>
+                        </div>
+                        {paymentMethod === "cod" && (
+                          <div className="flex justify-between">
+                            <span>COD charges</span>
+                            <span>₹ {50}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                          <span>Total</span>
+                          <span>₹ {finalTotal.toFixed(2)}</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </CollapsibleContent>
           </Collapsible>
         </div>
+
+        {/* {process.env.NODE_ENV == "development" && (
+          <>
+            <button
+              className="p-4 border rounded-xl my-4 w-full"
+              onClick={handleTestForm}
+            >
+              Fill the form
+            </button>
+          </>
+        )} */}
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Main Form */}
@@ -380,9 +652,13 @@ export default function CheckoutPage() {
                     type="email"
                     placeholder="Email *"
                     className="h-12"
-                    required
                     {...register("email")}
                   />
+                  {errors.email && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {errors.email.message}
+                    </p>
+                  )}
 
                   {/* User Status Messages */}
                   {hasSearched && (
@@ -430,39 +706,64 @@ export default function CheckoutPage() {
                   <Input
                     placeholder="First name *"
                     className="h-12"
-                    required
                     {...register("first_name")}
                   />
+                  {errors.first_name && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {errors.first_name.message}
+                    </p>
+                  )}
                   <Input
                     placeholder="Last name *"
                     className="h-12"
-                    required
                     {...register("last_name")}
                   />
+                  {errors.last_name && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {errors.last_name.message}
+                    </p>
+                  )}
                 </div>
                 <Input
                   placeholder="Street address *"
                   className="h-12"
-                  required
                   {...register("address_1")}
                 />
+                {errors.address_1 && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.address_1.message}
+                  </p>
+                )}
                 <Input
                   placeholder="Flat, suite, unit, etc."
                   className="h-12"
                   {...register("address_2")}
                 />
+                {errors.address_2 && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.address_2.message}
+                  </p>
+                )}
                 <Input
                   placeholder="Town / City *"
                   className="h-12"
-                  required
                   {...register("city")}
                 />
+                {errors.city && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.city.message}
+                  </p>
+                )}
                 <Input
                   placeholder="Postcode *"
                   className="h-12"
-                  required
                   {...register("postcode")}
                 />
+                {errors.postcode && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.postcode.message}
+                  </p>
+                )}
                 <Controller
                   name="country"
                   control={control}
@@ -474,30 +775,42 @@ export default function CheckoutPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="india">India</SelectItem>
-                        <SelectItem value="usa">United States</SelectItem>
-                        <SelectItem value="uk">United Kingdom</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
+                {errors.country && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.country.message}
+                  </p>
+                )}
                 <Controller
                   name="state"
                   control={control}
-                  defaultValue="haryana"
+                  defaultValue="Haryana"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="h-12">
-                        <SelectValue placeholder="State (optional)" />
+                        <SelectValue placeholder="State *" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="haryana">Haryana</SelectItem>
-                        <SelectItem value="delhi">Delhi</SelectItem>
-                        <SelectItem value="punjab">Punjab</SelectItem>
-                        <SelectItem value="rajasthan">Rajasthan</SelectItem>
+                        <SelectGroup>
+                          <SelectLabel>Search State</SelectLabel>
+                          {indianStates.map((state) => (
+                            <SelectItem key={state} value={state}>
+                              {state}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   )}
                 />
+                {errors.state && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.state.message}
+                  </p>
+                )}
                 <div className="grid grid-cols-1 gap-4">
                   <div className="flex">
                     <Select defaultValue="+91">
@@ -506,17 +819,19 @@ export default function CheckoutPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="+91">🇮🇳 +91</SelectItem>
-                        <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                        <SelectItem value="+44">🇬🇧 +44</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
                       placeholder="10 digit mobile number *"
                       className="h-12 rounded-l-none flex-1"
-                      required
                       {...register("phone")}
                     />
                   </div>
+                  {errors.phone && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {errors.phone.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -599,6 +914,7 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </RadioGroup>
+
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-gray-700">
                   A humble request, please do not place your order on COD if you
                   are not sure about the purchase. As a small business, we face
@@ -695,6 +1011,13 @@ export default function CheckoutPage() {
         updateQuantity={updateQuantity}
         removeItem={removeItem}
         onContinue={handleContinueAfterUpdate}
+      />
+
+      <BookLoadingModal
+        isOrderProcessing={isSubmitting}
+        isVerifying={isVerifyingPayment}
+        isOpen={isSubmitting || isVerifyingPayment}
+        onClose={() => {}}
       />
     </div>
   );

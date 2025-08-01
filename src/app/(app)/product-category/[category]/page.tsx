@@ -3,29 +3,30 @@ import ProductCategoryClient from "./ProductCategoryClient";
 
 export const revalidate = 259200; // 72 hours in seconds
 
-async function fetchProduct(category: string) {
+async function fetchInitialProducts(category: string) {
   try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-      }/api/get-products-by-category?c=${category}`,
+      `${baseUrl}/api/get-products-by-category?c=${category}&page=1&limit=20`,
       {
-        cache: "force-cache", // Cache the product data
+        next: { revalidate: 259200 }, // Use Next.js 13+ cache syntax
       }
     );
 
     if (!response.ok) {
-      throw new Error("Product not found");
+      console.error(`Failed to fetch products: ${response.status}`);
+      return { products: [] };
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error("Error fetching product:", error);
-    return null;
+    console.error("Error fetching initial products:", error);
+    return { products: [] };
   }
 }
 
-export default async function page({
+export default async function CategoryPage({
   params,
 }: {
   params: Promise<{
@@ -44,15 +45,13 @@ export default async function page({
     );
   }
 
-  const product = await fetchProduct(category);
+  // Fetch initial products for SSR
+  const { products } = await fetchInitialProducts(category);
 
-  if (!product) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-red-600">Product not found</h1>
-      </div>
-    );
-  }
-
-  return <ProductCategoryClient products={product} category="" />;
+  return (
+    <ProductCategoryClient
+      initialProducts={products || []}
+      category={category}
+    />
+  );
 }

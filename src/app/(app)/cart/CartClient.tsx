@@ -94,7 +94,7 @@ export default function CartClient() {
             Looks like you have not added any books to your cart yet.
           </p>
           <Button asChild size="lg">
-            <Link href="/books">
+            <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Continue Shopping
             </Link>
@@ -109,7 +109,7 @@ export default function CartClient() {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/books">
+            <Link href="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Continue Shopping
             </Link>
@@ -243,10 +243,7 @@ export default function CartClient() {
                     <span>Subtotal ({itemCount} items)</span>
                     <span>₹{total.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span className="text-green-600">Free</span>
-                  </div>
+
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Tax</span>
                     <span>Calculated at checkout</span>

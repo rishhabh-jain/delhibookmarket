@@ -51,43 +51,39 @@ export default function BookSearchBar() {
     setIsLoading(true);
 
     // Simulate API delay
-    const timer = setTimeout(() => {
-      const searchLower = searchTerm.toLowerCase();
+    const searchLower = searchTerm.toLowerCase();
 
-      const filtered = products
-        .filter((product) => {
-          const bookTitle = extractBookTitle(product.name);
-          const author = extractAuthor(product.name);
+    const filtered = products
+      .filter((product) => {
+        const bookTitle = extractBookTitle(product.name);
+        const author = extractAuthor(product.name);
 
-          return (
-            bookTitle.toLowerCase().includes(searchLower) ||
-            author.toLowerCase().includes(searchLower) ||
-            product.slug.toLowerCase().includes(searchLower)
-          );
-        })
-        .sort((a, b) => {
-          // Prioritize exact matches and in-stock items
-          const aTitle = extractBookTitle(a.name).toLowerCase();
-          const bTitle = extractBookTitle(b.name).toLowerCase();
+        return (
+          bookTitle.toLowerCase().includes(searchLower) ||
+          author.toLowerCase().includes(searchLower) ||
+          product.slug.toLowerCase().includes(searchLower)
+        );
+      })
+      .sort((a, b) => {
+        // Prioritize exact matches and in-stock items
+        const aTitle = extractBookTitle(a.name).toLowerCase();
+        const bTitle = extractBookTitle(b.name).toLowerCase();
 
-          if (aTitle.startsWith(searchLower) && !bTitle.startsWith(searchLower))
-            return -1;
-          if (!aTitle.startsWith(searchLower) && bTitle.startsWith(searchLower))
-            return 1;
-          if (a.stock_quantity > 0 && b.stock_quantity === 0) return -1;
-          if (a.stock_quantity === 0 && b.stock_quantity > 0) return 1;
+        if (aTitle.startsWith(searchLower) && !bTitle.startsWith(searchLower))
+          return -1;
+        if (!aTitle.startsWith(searchLower) && bTitle.startsWith(searchLower))
+          return 1;
+        if (a.stock_quantity > 0 && b.stock_quantity === 0) return -1;
+        if (a.stock_quantity === 0 && b.stock_quantity > 0) return 1;
 
-          return 0;
-        })
-        .slice(0, 8);
+        return 0;
+      })
+      .slice(0, 8);
 
-      setFilteredProducts(filtered);
-      setShowResults(true);
-      setSelectedIndex(-1);
-      setIsLoading(false);
-    }, 200);
-
-    return () => clearTimeout(timer);
+    setFilteredProducts(filtered);
+    setShowResults(true);
+    setSelectedIndex(-1);
+    setIsLoading(false);
   }, [searchTerm, products]);
 
   // Extract book title from full product name

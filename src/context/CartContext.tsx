@@ -64,6 +64,7 @@ interface CartState {
   items: CartItem[];
   total: number;
   itemCount: number;
+  isSidecartOpen: boolean; // Added sidecart state
 }
 
 type CartAction =
@@ -74,7 +75,10 @@ type CartAction =
   | { type: "REMOVE_ITEM"; payload: { id: number } }
   | { type: "UPDATE_QUANTITY"; payload: { id: number; quantity: number } }
   | { type: "CLEAR_CART" }
-  | { type: "LOAD_CART" };
+  | { type: "LOAD_CART" }
+  | { type: "OPEN_SIDECART" } // Added sidecart actions
+  | { type: "CLOSE_SIDECART" }
+  | { type: "TOGGLE_SIDECART" };
 
 interface CartContextType extends CartState {
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
@@ -84,6 +88,9 @@ interface CartContextType extends CartState {
   clearCart: () => void;
   isInStock: (id: number) => boolean;
   canAddToCart: (id: number, requestedQuantity: number) => boolean;
+  openSidecart: () => void; // Added sidecart methods
+  closeSidecart: () => void;
+  toggleSidecart: () => void;
 }
 
 // Local storage key
@@ -92,7 +99,7 @@ const CART_STORAGE_KEY = "ecommerce_cart";
 // Helper function to load cart from localStorage
 const loadCartFromStorage = (): CartState => {
   if (typeof window === "undefined") {
-    return { items: [], total: 0, itemCount: 0 };
+    return { items: [], total: 0, itemCount: 0, isSidecartOpen: false };
   }
 
   try {
@@ -105,13 +112,14 @@ const loadCartFromStorage = (): CartState => {
         items: parsedCart.items || [],
         total,
         itemCount,
+        isSidecartOpen: false, // Always start with sidecart closed
       };
     }
   } catch (error) {
     console.error("Error loading cart from localStorage:", error);
   }
 
-  return { items: [], total: 0, itemCount: 0 };
+  return { items: [], total: 0, itemCount: 0, isSidecartOpen: false };
 };
 
 // Helper function to save cart to localStorage
@@ -119,7 +127,9 @@ const saveCartToStorage = (state: CartState) => {
   if (typeof window === "undefined") return;
 
   try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state));
+    // Don't save sidecart state to localStorage, only cart items
+    const { isSidecartOpen, ...cartData } = state;
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
   } catch (error) {
     console.error("Error saving cart to localStorage:", error);
   }
@@ -191,6 +201,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         items: newItems,
         total,
         itemCount,
+        isSidecartOpen: true, // Automatically open sidecart when item is added
       };
       break;
     }
@@ -205,6 +216,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         items: newItems,
         total,
         itemCount,
+        isSidecartOpen: state.isSidecartOpen,
       };
       break;
     }
@@ -221,6 +233,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           items: newItems,
           total,
           itemCount,
+          isSidecartOpen: state.isSidecartOpen,
         };
       } else {
         const newItems = state.items.map((item) =>
@@ -233,13 +246,19 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           items: newItems,
           total,
           itemCount,
+          isSidecartOpen: state.isSidecartOpen,
         };
       }
       break;
     }
 
     case "CLEAR_CART": {
-      newState = { items: [], total: 0, itemCount: 0 };
+      newState = {
+        items: [],
+        total: 0,
+        itemCount: 0,
+        isSidecartOpen: state.isSidecartOpen,
+      };
       break;
     }
 
@@ -248,12 +267,33 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       break;
     }
 
+    case "OPEN_SIDECART": {
+      newState = { ...state, isSidecartOpen: true };
+      break;
+    }
+
+    case "CLOSE_SIDECART": {
+      newState = { ...state, isSidecartOpen: false };
+      break;
+    }
+
+    case "TOGGLE_SIDECART": {
+      newState = { ...state, isSidecartOpen: !state.isSidecartOpen };
+      break;
+    }
+
     default:
       return state;
   }
 
-  // Save to localStorage after every state change
-  saveCartToStorage(newState);
+  // Save to localStorage after every state change (except sidecart state changes)
+  if (
+    action.type !== "OPEN_SIDECART" &&
+    action.type !== "CLOSE_SIDECART" &&
+    action.type !== "TOGGLE_SIDECART"
+  ) {
+    saveCartToStorage(newState);
+  }
   return newState;
 };
 
@@ -309,6 +349,19 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     return currentQuantityInCart + requestedQuantity <= item.stock_quantity;
   };
 
+  // Sidecart methods
+  const openSidecart = () => {
+    dispatch({ type: "OPEN_SIDECART" });
+  };
+
+  const closeSidecart = () => {
+    dispatch({ type: "CLOSE_SIDECART" });
+  };
+
+  const toggleSidecart = () => {
+    dispatch({ type: "TOGGLE_SIDECART" });
+  };
+
   const value: CartContextType = {
     ...state,
     addItem,
@@ -318,6 +371,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     clearCart,
     isInStock,
     canAddToCart,
+    openSidecart,
+    closeSidecart,
+    toggleSidecart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

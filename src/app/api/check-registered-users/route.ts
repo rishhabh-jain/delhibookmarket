@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     // Search for user by email using WooCommerce API
     const response = await WooCommerce.get("customers", {
       email: email,
-      per_page: 1, // We only need one resul
+      per_page: 1, // We only need one result
+      _feilds: "id,email",
     });
 
     console.log(response.data);
@@ -47,17 +48,6 @@ export async function GET(request: NextRequest) {
         user: {
           id: user.id,
           email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          username: user.username,
-          date_created: user.date_created,
-          date_modified: user.date_modified,
-          avatar_url: user.avatar_url,
-          billing: user.billing,
-          shipping: user.shipping,
-          is_paying_customer: user.is_paying_customer,
-          orders_count: user.orders_count,
-          total_spent: user.total_spent,
         },
       });
     } else {

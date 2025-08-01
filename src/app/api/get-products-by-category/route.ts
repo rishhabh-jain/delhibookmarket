@@ -1,4 +1,3 @@
-// app/api/products/route.ts
 import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -12,7 +11,13 @@ const api = axios.create({
 
 export async function GET(request: NextRequest) {
   try {
-    const categoryId = request.nextUrl.searchParams.get("c");
+    const searchParams = request.nextUrl.searchParams;
+    const categoryId = searchParams.get("c");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const search = searchParams.get("search") || "";
+    const sort = searchParams.get("sort") || "name";
+
     if (!categoryId) {
       return NextResponse.json(
         { error: "Category ID is required" },
@@ -20,20 +25,82 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Map sort parameter to WooCommerce orderby values
+    let orderby = "popularity";
+    let order = "desc";
+
+    switch (sort) {
+      case "name":
+        orderby = "title";
+        order = "asc";
+        break;
+      case "price-low":
+        orderby = "price";
+        order = "asc";
+        break;
+      case "price-high":
+        orderby = "price";
+        order = "desc";
+        break;
+      case "popularity":
+        orderby = "popularity";
+        order = "desc";
+        break;
+      default:
+        orderby = "popularity";
+        order = "desc";
+    }
+
+    // Build API parameters
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apiParams: any = {
+      category: categoryId,
+      page: page,
+      per_page: limit,
+      orderby: orderby,
+      order: order,
+      stock_status: "instock",
+      _fields: "id,name,permalink,price,images,stock_quantity,slug",
+    };
+
+    // Add search parameter if provided
+    if (search.trim()) {
+      apiParams.search = search.trim();
+    }
+
     const res = await api.get("products", {
-      params: {
-        category: categoryId,
-        per_page: 8,
-        orderby: "popularity", // Sort by popularity
-        order: "desc", // Most popular first
-        stock_status: "instock",
-        _fields: "id,name,permalink,price,images,stock_quantity,slug", // Only fetch required fields
-      },
+      params: apiParams,
     });
 
-    return NextResponse.json(res.data);
+    // Get total count from headers
+    const totalCount = parseInt(res.headers["x-wp-total"] || "0");
+    const totalPages = parseInt(res.headers["x-wp-totalpages"] || "1");
+
+    // Determine if there's a next page
+    const hasNextPage = page < totalPages;
+    const nextPage = hasNextPage ? page + 1 : undefined;
+
+    // Return response in the expected format
+    return NextResponse.json({
+      products: res.data,
+      hasNextPage,
+      nextPage,
+      totalCount,
+      currentPage: page,
+      totalPages,
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
+
+    // Handle specific axios errors
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500;
+      const message =
+        error.response?.data?.message || "Failed to fetch products";
+
+      return NextResponse.json({ error: message }, { status });
+    }
+
     return NextResponse.json(
       { error: "Failed to fetch products" },
       { status: 500 }

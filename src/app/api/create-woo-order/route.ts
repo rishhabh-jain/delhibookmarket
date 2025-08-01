@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       fee_lines,
       shipping_lines,
     };
+    console.log("ORDER DATA \n");
+    console.log(orderData);
 
     // Make the API call to create the order
     const response = await api.post("/orders", orderData);

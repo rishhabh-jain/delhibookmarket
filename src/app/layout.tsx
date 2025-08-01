@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./Providers";
 import { CartProvider } from "@/context/CartContext";
+import AlertProvider from "@/context/AlertContext";
+import ScrollToTop from "@/components/ScrollTotop";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +32,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <CartProvider>
-          <Providers>{children}</Providers>
+          <Providers>
+            <AlertProvider>
+              <ScrollToTop />
+
+              {children}
+            </AlertProvider>
+          </Providers>
         </CartProvider>
       </body>
     </html>

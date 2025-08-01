@@ -14,11 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, ShoppingCart, Star } from "lucide-react";
+import { Search, ShoppingCart, Star, Loader2 } from "lucide-react";
 import Header from "@/components/header-footer/Header";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
-import BookSearchBar from "@/components/search/Searchbar";
 
 interface ProductImage {
   id: number;
@@ -51,63 +50,98 @@ interface ProductsResponse {
 async function fetchProducts(
   category: string,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  searchTerm: string = "",
+  sortBy: string = "name"
 ): Promise<ProductsResponse> {
-  const response = await fetch(
-    `/api/get-products-by-category?c=${category}&page=${page}&limit=${limit}`
-  );
+  const params = new URLSearchParams({
+    c: category,
+    page: page.toString(),
+    limit: limit.toString(),
+    search: searchTerm,
+    sort: sortBy,
+  });
+
+  const response = await fetch(`/api/get-products-by-category?${params}`);
 
   if (!response.ok) {
-    throw new Error("Failed to fetch products");
+    throw new Error(`Failed to fetch products: ${response.status}`);
   }
 
   return response.json();
 }
 
 export default function ProductCategoryClient({
-  products,
+  initialProducts,
   category,
 }: {
-  products: Product[];
+  initialProducts: Product[];
   category: string;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  // Debounce search term to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "100px",
   });
 
-  const filteredAndSortedProducts = useMemo(() => {
-    const filtered = products.filter((product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["products", category, debouncedSearchTerm, sortBy],
+    queryFn: ({ pageParam = 1 }) =>
+      fetchProducts(category, pageParam, 20, debouncedSearchTerm, sortBy),
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.nextPage : undefined,
+    initialData:
+      initialProducts.length > 0
+        ? {
+            pages: [
+              {
+                products: initialProducts,
+                hasNextPage: initialProducts.length === 20,
+                nextPage: 2,
+                totalCount: initialProducts.length,
+              },
+            ],
+            pageParams: [1],
+          }
+        : undefined,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
+  });
 
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "price-low":
-          return Number.parseFloat(a.price) - Number.parseFloat(b.price);
-        case "price-high":
-          return Number.parseFloat(b.price) - Number.parseFloat(a.price);
-        case "name":
-          return a.name.localeCompare(b.name);
-        default:
-          return 0;
-      }
-    });
+  // Trigger fetch next page when the sentinel element comes into view
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    return filtered;
-  }, [products, searchTerm, sortBy]);
+  // Flatten all pages into a single array of products
+  const allProducts = useMemo(() => {
+    return data?.pages.flatMap((page) => page.products) ?? [];
+  }, [data]);
 
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedProducts = filteredAndSortedProducts.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   const formatPrice = (price: string) => {
     const numPrice = Number.parseFloat(price);
@@ -122,6 +156,22 @@ export default function ProductCategoryClient({
     return { text: "In Stock", variant: "default" as const };
   };
 
+  if (isError) {
+    return (
+      <>
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <p className="text-red-500 text-lg mb-4">
+              Error loading products: {error?.message}
+            </p>
+            <Button onClick={() => refetch()}>Try Again</Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Header />
@@ -132,15 +182,22 @@ export default function ProductCategoryClient({
             {category} Books
           </h1>
           <p className="text-muted-foreground">
-            Discover our collection of {filteredAndSortedProducts.length} books
-            in {category}
+            {isLoading
+              ? "Loading..."
+              : `Discover our collection of ${totalCount} books in ${category}`}
           </p>
         </div>
 
         {/* Search and Filter Section */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <BookSearchBar />
+          <div className="relative flex-1 md:max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search books..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full md:w-48">
@@ -155,149 +212,139 @@ export default function ProductCategoryClient({
         </div>
 
         {/* Products Grid */}
-        {paginatedProducts.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-0">
+                  <div className="aspect-[3/4] bg-gray-200 rounded-t-lg" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded" />
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : allProducts.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg">
               No books found matching your criteria.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-            {paginatedProducts.map((product) => {
-              const stockStatus = getStockStatus(product.stock_quantity);
-              const mainImage = product.images[0];
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+              {allProducts.map((product) => {
+                const stockStatus = getStockStatus(product.stock_quantity);
+                const mainImage = product.images?.[0];
 
-              return (
-                <Card
-                  key={product.id}
-                  className="group hover:shadow-lg transition-shadow duration-300"
-                >
-                  <CardContent className="p-0">
-                    <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg">
-                      <Link href={`/${product.slug}`}>
-                        <Image
-                          src={
-                            mainImage?.src ||
-                            `/placeholder.svg?height=400&width=300&text=${
-                              encodeURIComponent(product.name) ||
-                              "/placeholder.svg"
-                            }`
-                          }
-                          alt={mainImage?.alt || product.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </Link>
-                      <div className="absolute top-2 right-2">
-                        <Badge
-                          variant={stockStatus.variant}
-                          className="text-xs"
-                        >
-                          {stockStatus.text}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <Link href={`/${product.slug}`}>
-                        <h3 className="font-semibold text-sm mb-2 line-clamp-2 hover:text-primary transition-colors">
-                          {product.name}
-                        </h3>
-                      </Link>
-
-                      <div className="flex items-center mb-3">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3 w-3 ${
-                                i < 4
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-gray-300"
-                              }`}
-                            />
-                          ))}
+                return (
+                  <Card
+                    key={product.id}
+                    className="group hover:shadow-lg transition-shadow duration-300"
+                  >
+                    <CardContent className="p-0">
+                      <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg">
+                        <Link href={`/${product.slug}`}>
+                          <Image
+                            src={
+                              mainImage?.src ||
+                              `/placeholder.svg?height=400&width=300&text=${encodeURIComponent(
+                                product.name
+                              )}`
+                            }
+                            alt={mainImage?.alt || product.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                          />
+                        </Link>
+                        <div className="absolute top-2 right-2">
+                          <Badge
+                            variant={stockStatus.variant}
+                            className="text-xs"
+                          >
+                            {stockStatus.text}
+                          </Badge>
                         </div>
-                        <span className="text-xs text-muted-foreground ml-1">
-                          (4.0)
-                        </span>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-primary">
-                          {formatPrice(product.price)}
-                        </span>
-                        <Button
-                          size="sm"
-                          disabled={product.stock_quantity === 0}
-                          className="h-8 px-3"
-                        >
-                          <ShoppingCart className="h-3 w-3 mr-1" />
-                          Add
-                        </Button>
+                      <div className="p-4">
+                        <Link href={`/${product.slug}`}>
+                          <h3 className="font-semibold text-sm mb-2 line-clamp-2 hover:text-primary transition-colors">
+                            {product.name}
+                          </h3>
+                        </Link>
+
+                        <div className="flex items-center mb-3">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-3 w-3 ${
+                                  i < 4
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground ml-1">
+                            (4.0)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold text-primary">
+                            {formatPrice(product.price)}
+                          </span>
+                          <Button
+                            size="sm"
+                            disabled={product.stock_quantity === 0}
+                            className="h-8 px-3"
+                          >
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                            Add
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-
-            <div className="flex gap-1">
-              {[...Array(totalPages)].map((_, i) => {
-                const page = i + 1;
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className="w-10"
-                    >
-                      {page}
-                    </Button>
-                  );
-                } else if (
-                  page === currentPage - 2 ||
-                  page === currentPage + 2
-                ) {
-                  return (
-                    <span key={page} className="px-2">
-                      ...
-                    </span>
-                  );
-                }
-                return null;
+                    </CardContent>
+                  </Card>
+                );
               })}
             </div>
 
-            <Button
-              variant="outline"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
+            {/* Loading indicator for next page */}
+            {hasNextPage && (
+              <div ref={ref} className="flex justify-center py-8">
+                {isFetchingNextPage ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading more books...</span>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => fetchNextPage()}
+                    variant="outline"
+                    disabled={isFetchingNextPage}
+                  >
+                    Load More
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* End of results indicator */}
+            {!hasNextPage && allProducts.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  You have reached the end of the results
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
