@@ -250,7 +250,7 @@ export default function Header() {
           </div>
 
           {/* Mobile search bar */}
-          <div className="md:hidden pb-3">
+          <div className="md:hidden pb-3 ">
             <div className="relative">
               <BookSearchBar />
             </div>
