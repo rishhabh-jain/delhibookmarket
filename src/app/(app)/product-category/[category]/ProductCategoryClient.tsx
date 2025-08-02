@@ -13,8 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Search, ShoppingCart, Star, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Header from "@/components/header-footer/Header";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
@@ -129,6 +128,8 @@ export default function ProductCategoryClient({
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
   });
+
+  console.log(data);
 
   // Trigger fetch next page when the sentinel element comes into view
   useEffect(() => {
