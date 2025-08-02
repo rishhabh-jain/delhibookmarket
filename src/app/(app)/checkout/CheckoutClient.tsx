@@ -387,7 +387,7 @@ export default function CheckoutPage() {
 
       // 4️⃣ Create Razorpay order
       const razorpayRes = await axios.post("/api/create-razorpay-order", {
-        amountInRupees: Math.round(total), // total in ₹, backend will convert to paise
+        amountInRupees: Math.round(finalTotal), // total in ₹, backend will convert to paise
         wooOrderId: wooOrderData.id,
       });
 

@@ -235,11 +235,7 @@ export default function CartClient() {
                         <div className="flex-shrink-0">
                           <Link href={`/${slug}`}>
                             <Image
-                              src={
-                                item.image ||
-                                "/placeholder.svg?height=200&width=150&query=book cover" ||
-                                "/placeholder.svg"
-                              }
+                              src={item.image ?? "/placeholder.svg"}
                               alt={item.name}
                               width={100}
                               height={133}

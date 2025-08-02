@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "delhibookmarket.com",
+        hostname: "shop.delhibookmarket.com",
         // Optional: pathname: "/wp-content/uploads/**" for tighter control
       },
     ],
