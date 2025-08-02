@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     try {
       // ✅ Update WooCommerce order with more details
       const updateResponse = await axios.put(
-        `https://delhibookmarket.com/wp-json/wc/v3/orders/${wooOrderId}`,
+        `https://shop.delhibookmarket.com/wp-json/wc/v3/orders/${wooOrderId}`,
         {
           status: "processing",
           set_paid: true,
