@@ -63,7 +63,7 @@ export default function Header() {
                   <div className="flex flex-col h-full overflow-y-auto">
                     <nav className="flex flex-col p-4 space-y-1">
                       <a
-                        href="/shop.delhibookmarket.com/my-account-2/"
+                        href="https://shop.delhibookmarket.com/my-account-2/"
                         className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -106,7 +106,7 @@ export default function Header() {
                       </Collapsible>
 
                       <Link
-                        href="/prouduct-category/fiction"
+                        href="/product-category/fiction"
                         className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -162,7 +162,7 @@ export default function Header() {
                       </Link>
 
                       <Link
-                        href="/product-category/combos"
+                        href="/product-category/combo"
                         className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
