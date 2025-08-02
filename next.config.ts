@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         hostname: "shop.delhibookmarket.com",
         // Optional: pathname: "/wp-content/uploads/**" for tighter control
       },
+      {
+        protocol: "https",
+        hostname: "delhibookmarket.com",
+        // Optional: pathname: "/wp-content/uploads/**" for tighter control
+      },
     ],
   },
 };
