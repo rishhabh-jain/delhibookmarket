@@ -2,7 +2,7 @@ import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
 const api = axios.create({
-  baseURL: "https://delhibookmarket.com/wp-json/wc/v3/",
+  baseURL: "https://shop.delhibookmarket.com/wp-json/wc/v3/",
   auth: {
     username: process.env.WC_CONSUMER_KEY!,
     password: process.env.WC_CONSUMER_SECRET!,
@@ -54,13 +54,13 @@ export async function GET(request: NextRequest) {
     // Build API parameters
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const apiParams: any = {
-      category: categoryId,
+      category: categoryId === "all" ? undefined : categoryId,
       page: page,
       per_page: limit,
-      orderby: orderby,
-      order: order,
+      orderby: "popularity",
+      order: "desc",
       stock_status: "instock",
-      _fields: "id,name,permalink,price,images,stock_quantity,slug",
+      _fields: "id,name,permalink,price,images,stock_quantity,slug,total_sales",
     };
 
     // Add search parameter if provided

@@ -3,7 +3,7 @@ import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
 const api = axios.create({
-  baseURL: "https://delhibookmarket.com/wp-json/wc/v3/",
+  baseURL: "https://shop.delhibookmarket.com/wp-json/wc/v3/",
   auth: {
     username: process.env.WC_CONSUMER_KEY!,
     password: process.env.WC_CONSUMER_SECRET!,

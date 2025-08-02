@@ -41,8 +41,9 @@ import { useRouter } from "next/navigation";
 import BookLoadingModal from "@/components/loading/CheckoutLoading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { checkoutSchema } from "@/Schemma/CheckOutSchemma";
-import z from "zod";
+import z, { set } from "zod";
 import { useAlert } from "@/context/AlertContext";
+import CustomerLoveSection from "@/components/CustomerloveSection";
 
 // Mock useCart hook - replace with your actual implementation
 
@@ -125,7 +126,7 @@ const indianStates = [
 ];
 
 export default function CheckoutPage() {
-  const { items, total, itemCount, updateQuantity, removeItem, canAddToCart } =
+  const { items, total, clearCart, updateQuantity, removeItem, canAddToCart } =
     useCart();
   const { showToast } = useAlert();
 
@@ -246,7 +247,7 @@ export default function CheckoutPage() {
   const checkOutOfStock = async () => {
     if (items.length === 0) {
       alert("Your cart is empty");
-      return;
+      return false;
     }
 
     setIsCheckingStock(true);
@@ -269,13 +270,16 @@ export default function CheckoutPage() {
         // There are stock issues - show modal
         setOutOfStockList(data.out_of_stock_list);
         setIsModalOpen(true);
+        return false; // Indicate stock issues
       } else {
         // All items are in stock - proceed with checkout
         console.log("✅ All items are in stock!");
+        return true; // Indicate no stock issues
       }
     } catch (error) {
       console.error("Error checking stock:", error);
       alert("Failed to check stock availability. Please try again.");
+      return true; // Assume success to avoid blocking checkout
     } finally {
       setIsCheckingStock(false);
     }
@@ -300,7 +304,12 @@ export default function CheckoutPage() {
   const handleCheckout = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
     try {
-      await checkOutOfStock(); // optional: await this if it's async
+      const IS_ITEMS_IN_STOCK = await checkOutOfStock(); // optional: await this if it's async
+
+      if (!IS_ITEMS_IN_STOCK) {
+        setIsSubmitting(false);
+        return; // Stop checkout if items are out of stock
+      }
 
       const PAYMENT_METHOD = paymentMethod;
       const PAYMENT_METHOD_TITLE =
@@ -357,7 +366,8 @@ export default function CheckoutPage() {
 
       // 2️⃣ COD? Skip Razorpay and redirect
       if (PAYMENT_METHOD === "cod") {
-        router.push(`/order-success?order_id=${wooOrderData.id}`);
+        clearCart();
+        router.replace(`/order-success?order_id=${wooOrderData.id}`);
         return;
       }
 
@@ -406,7 +416,8 @@ export default function CheckoutPage() {
             }),
           });
           setIsVerifyingPayment(false);
-          router.push(`/order-success?order_id=${wooOrderData.id}`);
+          clearCart();
+          router.replace(`/order-success?order_id=${wooOrderData.id}`);
         },
         prefill: {
           name: data.first_name + " " + data.last_name,
@@ -1002,6 +1013,8 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      <CustomerLoveSection />
 
       <StockCheckModal
         isOpen={isModalOpen}

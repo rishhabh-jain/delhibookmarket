@@ -2,37 +2,37 @@ import Link from "next/link";
 
 const categories = [
   {
-    id: 555,
+    id: "all",
     name: "Best selling",
     icon: "check-circle",
     color: "bg-black",
   },
   {
-    id: 560,
+    id: "all",
     name: "New arrivals",
     icon: "new-badge",
     color: "bg-orange-400",
   },
   {
-    id: 745,
+    id: "box-sets",
     name: "Box sets",
     icon: "books",
     color: "bg-blue-500",
   },
   {
-    id: 538,
+    id: "fiction",
     name: "Fiction books",
     icon: "person-walking",
     color: "bg-purple-500",
   },
   {
-    id: 539,
+    id: "finance",
     name: "Finance",
     icon: "chart",
     color: "bg-yellow-500",
   },
   {
-    id: 555,
+    id: "non-fiction",
     name: "Non Fiction",
     icon: "crown",
     color: "bg-amber-500",

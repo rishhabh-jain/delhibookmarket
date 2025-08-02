@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, X, ShoppingCart, ExternalLink } from "lucide-react";
+import { Search, X, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Product {
@@ -18,11 +18,16 @@ interface Product {
   slug: string;
 }
 
+interface SearchResult extends Product {
+  score: number;
+  matchType: "exact" | "fuzzy" | "partial";
+}
+
 export default function BookSearchBar() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -30,60 +35,221 @@ export default function BookSearchBar() {
   const searchRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Simulate loading products (replace with actual data loading)
+  // Load products data
   useEffect(() => {
-    // Load the optimized search index
     fetch("/data/search-index.json")
       .then((res) => res.json())
       .then((data) => setProducts(data))
       .catch((err) => console.error("Failed to load products:", err));
   }, []);
 
-  // Advanced search with multiple criteria
+  // Levenshtein distance calculation for fuzzy matching
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = Array(str2.length + 1)
+      .fill(null)
+      .map(() => Array(str1.length + 1).fill(null));
+
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1, // deletion
+          matrix[j - 1][i] + 1, // insertion
+          matrix[j - 1][i - 1] + indicator // substitution
+        );
+      }
+    }
+
+    return matrix[str2.length][str1.length];
+  };
+
+  // Calculate similarity score (0-1, where 1 is perfect match)
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const maxLength = Math.max(str1.length, str2.length);
+    if (maxLength === 0) return 1;
+    const distance = levenshteinDistance(
+      str1.toLowerCase(),
+      str2.toLowerCase()
+    );
+    return (maxLength - distance) / maxLength;
+  };
+
+  // Check for transposition (adjacent character swap)
+  const hasTransposition = (str1: string, str2: string): boolean => {
+    if (Math.abs(str1.length - str2.length) > 1) return false;
+
+    const s1 = str1.toLowerCase();
+    const s2 = str2.toLowerCase();
+
+    let differences = 0;
+    let transpositionFound = false;
+
+    for (let i = 0; i < Math.min(s1.length, s2.length) - 1; i++) {
+      if (s1[i] !== s2[i]) {
+        differences++;
+        // Check for adjacent swap
+        if (!transpositionFound && i < s1.length - 1 && i < s2.length - 1) {
+          if (s1[i] === s2[i + 1] && s1[i + 1] === s2[i]) {
+            transpositionFound = true;
+            i++; // Skip next character as it's part of the transposition
+            continue;
+          }
+        }
+      }
+    }
+
+    return transpositionFound && differences <= 2;
+  };
+
+  // Normalize text for better matching
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "") // Remove punctuation
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .trim();
+  };
+
+  // Check if query matches with word boundaries
+  const wordBoundaryMatch = (text: string, query: string): boolean => {
+    const normalizedText = normalizeText(text);
+    const normalizedQuery = normalizeText(query);
+    const words = normalizedText.split(" ");
+
+    return words.some(
+      (word) =>
+        word.startsWith(normalizedQuery) ||
+        calculateSimilarity(word, normalizedQuery) > 0.7
+    );
+  };
+
+  // Advanced fuzzy search function
+  const fuzzySearch = (products: Product[], query: string): SearchResult[] => {
+    if (!query.trim()) return [];
+
+    const normalizedQuery = normalizeText(query);
+    const results: SearchResult[] = [];
+
+    products.forEach((product) => {
+      const bookTitle = normalizeText(extractBookTitle(product.name));
+      const author = normalizeText(extractAuthor(product.name));
+      const slug = normalizeText(product.slug.replace(/-/g, " "));
+
+      let bestScore = 0;
+      let matchType: "exact" | "fuzzy" | "partial" = "partial";
+
+      // Exact match check
+      if (
+        bookTitle.includes(normalizedQuery) ||
+        author.includes(normalizedQuery)
+      ) {
+        bestScore = 1.0;
+        matchType = "exact";
+      }
+
+      // Word boundary fuzzy matching
+      else if (
+        wordBoundaryMatch(bookTitle, normalizedQuery) ||
+        wordBoundaryMatch(author, normalizedQuery)
+      ) {
+        bestScore = 0.9;
+        matchType = "fuzzy";
+      }
+
+      // Character-level fuzzy matching
+      else {
+        const titleSimilarity = calculateSimilarity(bookTitle, normalizedQuery);
+        const authorSimilarity = calculateSimilarity(author, normalizedQuery);
+        const slugSimilarity = calculateSimilarity(slug, normalizedQuery);
+
+        bestScore = Math.max(titleSimilarity, authorSimilarity, slugSimilarity);
+
+        // Check for transpositions (common typos)
+        if (bestScore < 0.6) {
+          const titleWords = bookTitle.split(" ");
+          const authorWords = author.split(" ");
+
+          for (const word of [...titleWords, ...authorWords]) {
+            if (hasTransposition(word, normalizedQuery)) {
+              bestScore = Math.max(bestScore, 0.8);
+              matchType = "fuzzy";
+              break;
+            }
+          }
+        }
+
+        if (bestScore >= 0.6) {
+          matchType = "fuzzy";
+        }
+      }
+
+      // Boost score for in-stock items
+      if (product.stock_quantity > 0) {
+        bestScore *= 1.1;
+      }
+
+      // Include results with score > 0.4 (adjustable threshold)
+      if (bestScore > 0.4) {
+        results.push({
+          ...product,
+          score: bestScore,
+          matchType,
+        });
+      }
+    });
+
+    // Sort by score (descending) and match type priority
+    // Replace the existing fuzzySearch function's sorting logic with this:
+    return results
+      .sort((a, b) => {
+        // Deprioritize combo books (check if name contains multiple book titles or "combo", "bundle", "set")
+        const aIsCombo = /(\+|combo|bundle|set|collection)/i.test(a.name);
+        const bIsCombo = /(\+|combo|bundle|set|collection)/i.test(b.name);
+
+        if (aIsCombo && !bIsCombo) return 1; // b comes first
+        if (!aIsCombo && bIsCombo) return -1; // a comes first
+
+        // Prioritize exact matches, then fuzzy, then partial
+        const typeScore = { exact: 3, fuzzy: 2, partial: 1 };
+        const typeDiff = typeScore[b.matchType] - typeScore[a.matchType];
+        if (typeDiff !== 0) return typeDiff;
+
+        // Then by similarity score
+        const scoreDiff = b.score - a.score;
+        if (Math.abs(scoreDiff) > 0.1) return scoreDiff;
+
+        // Finally by stock availability
+        return (b.stock_quantity > 0 ? 1 : 0) - (a.stock_quantity > 0 ? 1 : 0);
+      })
+      .slice(0, 8);
+  };
+
+  // Advanced search with debouncing
   useEffect(() => {
     if (searchTerm.trim() === "") {
       setFilteredProducts([]);
       setShowResults(false);
       setSelectedIndex(-1);
+      setIsLoading(false); // Add this line
+
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate API delay
-    const searchLower = searchTerm.toLowerCase();
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      const results = fuzzySearch(products, searchTerm);
+      setFilteredProducts(results);
+      setShowResults(true);
+      setSelectedIndex(-1);
+      setIsLoading(false);
+    }, 150);
 
-    const filtered = products
-      .filter((product) => {
-        const bookTitle = extractBookTitle(product.name);
-        const author = extractAuthor(product.name);
-
-        return (
-          bookTitle.toLowerCase().includes(searchLower) ||
-          author.toLowerCase().includes(searchLower) ||
-          product.slug.toLowerCase().includes(searchLower)
-        );
-      })
-      .sort((a, b) => {
-        // Prioritize exact matches and in-stock items
-        const aTitle = extractBookTitle(a.name).toLowerCase();
-        const bTitle = extractBookTitle(b.name).toLowerCase();
-
-        if (aTitle.startsWith(searchLower) && !bTitle.startsWith(searchLower))
-          return -1;
-        if (!aTitle.startsWith(searchLower) && bTitle.startsWith(searchLower))
-          return 1;
-        if (a.stock_quantity > 0 && b.stock_quantity === 0) return -1;
-        if (a.stock_quantity === 0 && b.stock_quantity > 0) return 1;
-
-        return 0;
-      })
-      .slice(0, 8);
-
-    setFilteredProducts(filtered);
-    setShowResults(true);
-    setSelectedIndex(-1);
-    setIsLoading(false);
+    return () => clearTimeout(timeoutId);
   }, [searchTerm, products]);
 
   // Extract book title from full product name
@@ -153,10 +319,35 @@ export default function BookSearchBar() {
     setShowResults(false);
   };
 
+  // Highlight matching text
+  const highlightMatch = (text: string, query: string) => {
+    if (!query.trim()) return text;
+
+    const normalizedText = normalizeText(text);
+    const normalizedQuery = normalizeText(query);
+
+    // Simple highlighting for exact matches
+    const regex = new RegExp(`(${normalizedQuery})`, "gi");
+    return text.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
+  };
+
+  const getMatchTypeColor = (matchType: "exact" | "fuzzy" | "partial") => {
+    switch (matchType) {
+      case "exact":
+        return "text-green-600";
+      case "fuzzy":
+        return "text-blue-600";
+      case "partial":
+        return "text-gray-600";
+      default:
+        return "text-gray-600";
+    }
+  };
+
   return (
     <div className="relative w-full max-w-2xl my-2" ref={resultsRef}>
       {/* Search Input */}
-      <div className="relative ">
+      <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-gray-400" />
         </div>
@@ -164,7 +355,7 @@ export default function BookSearchBar() {
         <input
           ref={searchRef}
           type="text"
-          placeholder="Search for books, authors..."
+          placeholder="Search for books, authors... (smart search with typo tolerance)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -230,28 +421,37 @@ export default function BookSearchBar() {
 
                 {/* Book Details */}
                 <div className="flex-grow min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate text-sm">
-                    {bookTitle}
-                  </h3>
+                  <h3
+                    className="font-semibold text-gray-900 truncate text-sm"
+                    dangerouslySetInnerHTML={{
+                      __html: highlightMatch(bookTitle, searchTerm),
+                    }}
+                  />
                   {author && (
-                    <p className="text-sm text-gray-600 truncate">
-                      by {author}
-                    </p>
+                    <p
+                      className="text-sm text-gray-600 truncate"
+                      dangerouslySetInnerHTML={{
+                        __html: `by ${highlightMatch(author, searchTerm)}`,
+                      }}
+                    />
                   )}
                   <div className="flex items-center mt-1 space-x-3">
                     <span className="font-bold text-green-600">
                       ₹{product.price}
                     </span>
                     <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        product.stock_quantity > 0
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
+                      className={`text-xs px-2 py-1 rounded-full ${getMatchTypeColor(
+                        product.matchType
+                      )} bg-gray-100`}
                     >
-                      {product.stock_quantity > 0
-                        ? `${product.stock_quantity} in stock`
-                        : "Out of stock"}
+                      {product.matchType === "exact"
+                        ? "Exact"
+                        : product.matchType === "fuzzy"
+                        ? "Smart Match"
+                        : "Similar"}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {Math.round(product.score * 100)}% match
                     </span>
                   </div>
                 </div>
@@ -267,8 +467,8 @@ export default function BookSearchBar() {
           {/* Show more results indicator */}
           {filteredProducts.length === 8 && (
             <div className="p-3 text-center text-sm text-gray-500 bg-gray-50">
-              Showing top 8 results. Try a more specific search for better
-              matches.
+              Showing top 8 smart matches. Try a more specific search for better
+              results.
             </div>
           )}
         </div>
@@ -284,7 +484,8 @@ export default function BookSearchBar() {
               <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p className="text-lg font-medium">No books found</p>
               <p className="text-sm mt-1">
-                Try searching with different keywords or author names
+                Try different keywords or check for typos. Our smart search
+                handles most spelling variations!
               </p>
             </div>
           </div>

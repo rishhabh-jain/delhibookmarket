@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Award,
   ShoppingCart,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,8 @@ import {
   DeliveryTimeEstimator,
 } from "@/utils/DeliveryTimeEstimator";
 import { useRouter } from "next/navigation";
+import { useAlert } from "@/context/AlertContext";
+import CountDownTimer from "@/components/product/CountDownTimer";
 
 interface WooProduct {
   id: number;
@@ -74,6 +77,7 @@ interface ProductClientProps {
 }
 
 export default function ProductClient({ product }: ProductClientProps) {
+  const { showToast } = useAlert();
   const [quantity, setQuantity] = useState(1);
   const [pincode, setPincode] = useState("");
   const [isAdded, setIsAdded] = useState(false);
@@ -91,9 +95,17 @@ export default function ProductClient({ product }: ProductClientProps) {
   const handleAddToCart = () => {
     if (isAdded) return;
 
+    if (currentProduct?.stock_quantity === 0) {
+      showToast({
+        variant: "warning",
+        message: "This product is currently out of stock.",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    addWooProduct(product, 1);
+    addWooProduct(product, quantity);
 
     setIsLoading(false);
     setIsAdded(true);
@@ -102,23 +114,6 @@ export default function ProductClient({ product }: ProductClientProps) {
       setIsAdded(false);
     }, 3000);
   };
-
-  // Countdown timer effect
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleDirectCheckout = (product: WooProduct) => {
     // Add the product to existing cart (doesn't clear previous items)
@@ -152,6 +147,10 @@ export default function ProductClient({ product }: ProductClientProps) {
       </div>
     );
   };
+
+  const IsInStock =
+    currentProduct?.stock_quantity > 0 ||
+    currentProduct?.stock_status === "instock";
 
   return (
     <>
@@ -193,13 +192,26 @@ export default function ProductClient({ product }: ProductClientProps) {
             </div>
 
             <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-4 bg-gray-800"></div>
-                <span className="font-medium">Softcover</span>
-              </div>
               <div className="flex items-center gap-1">
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-green-600 font-medium">Available</span>
+                {IsInStock ? (
+                  <Check
+                    className={`w-4 h-4 ${
+                      IsInStock ? "text-green-600" : "text-red-600"
+                    }`}
+                  />
+                ) : (
+                  <X
+                    className={`w-4 h-4 ${
+                      IsInStock ? "text-green-600" : "text-red-600"
+                    }`}
+                  />
+                )}
+
+                <span
+                  className={`${IsInStock ? "text-green-600" : "text-red-600"}`}
+                >
+                  {IsInStock ? `Available` : "Out of stock"}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-gray-700">Goodread ratings</span>
@@ -221,14 +233,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                     ₹{currentProduct?.price}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mb-1">
-                  {renderStars(
-                    Number.parseFloat(currentProduct?.average_rating ?? "")
-                  )}
-                  <span className="text-xs text-gray-600">
-                    ({currentProduct?.rating_count} reviews)
-                  </span>
-                </div>
+
                 <p className="text-xs text-gray-700 mb-1">
                   Inclusive of all taxes
                 </p>
@@ -267,8 +272,20 @@ export default function ProductClient({ product }: ProductClientProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <Check className="w-4 h-4 text-green-600" />
-                  <span className="text-green-600">
+                  {IsInStock ? (
+                    <Check
+                      className={`w-4 h-4 ${
+                        IsInStock ? "text-green-600" : "text-red-600"
+                      }`}
+                    />
+                  ) : (
+                    <X
+                      className={`w-4 h-4 ${
+                        IsInStock ? "text-green-600" : "text-red-600"
+                      }`}
+                    />
+                  )}
+                  <span className={`text-${IsInStock ? "green" : "red"}-600`}>
                     {currentProduct?.stock_quantity} in stock
                   </span>
                 </div>
@@ -319,7 +336,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                       : "bg-transparent hover:bg-gray-50"
                   }`}
                   onClick={handleAddToCart}
-                  disabled={isLoading}
+                  disabled={isLoading || !IsInStock}
                 >
                   <div className="flex items-center justify-center gap-2 relative z-10">
                     {isLoading ? (
@@ -337,7 +354,9 @@ export default function ProductClient({ product }: ProductClientProps) {
                     ) : (
                       <>
                         <ShoppingCart className="w-4 h-4" />
-                        <span>Add to basket</span>
+                        <span>
+                          {IsInStock ? "Add to basket" : "Out of stock"}
+                        </span>
                       </>
                     )}
                   </div>
@@ -353,8 +372,9 @@ export default function ProductClient({ product }: ProductClientProps) {
                     handleDirectCheckout(product);
                   }}
                   className="w-full bg-black hover:bg-gray-800 text-white text-sm h-9 transition-colors duration-200"
+                  disabled={isLoading || !IsInStock}
                 >
-                  Buy Now
+                  {IsInStock ? "Buy Now" : "Out of stock"}
                 </Button>
 
                 {/* Cart counter animation */}
@@ -368,31 +388,12 @@ export default function ProductClient({ product }: ProductClientProps) {
             </div>
 
             {/* Countdown Timer */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <h3 className="text-sm font-semibold mb-2 text-center">
-                Hurry Up! Offer ends in
-              </h3>
-              <div className="flex justify-center gap-2">
-                <div className="bg-white border border-gray-200 rounded p-2 min-w-[50px] text-center">
-                  <div className="text-lg font-bold text-red-500">
-                    {timeLeft.hours.toString().padStart(2, "0")}
-                  </div>
-                  <div className="text-xs text-gray-600">hrs</div>
-                </div>
-                <div className="bg-white border border-gray-200 rounded p-2 min-w-[50px] text-center">
-                  <div className="text-lg font-bold text-red-500">
-                    {timeLeft.minutes.toString().padStart(2, "0")}
-                  </div>
-                  <div className="text-xs text-gray-600">min</div>
-                </div>
-                <div className="bg-white border border-gray-200 rounded p-2 min-w-[50px] text-center">
-                  <div className="text-lg font-bold text-red-500">
-                    {timeLeft.seconds.toString().padStart(2, "0")}
-                  </div>
-                  <div className="text-xs text-gray-600">sec</div>
-                </div>
-              </div>
-            </div>
+
+            <CountDownTimer
+              initialTime={{ hours: 1, minutes: 0, seconds: 0 }}
+              title="Limited Time Offer"
+              subtitle="Hurry up! This offer expires soon."
+            />
 
             {/* Features */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -426,19 +427,14 @@ export default function ProductClient({ product }: ProductClientProps) {
 
             {/* Action Buttons */}
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 bg-black text-white hover:bg-gray-800 text-sm h-9"
-              >
-                Bulk Inquiry
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 bg-red-500 text-white hover:bg-red-600 text-sm h-9"
-              >
-                <Heart className="w-3 h-3 mr-1" />
-                Add to wishlist
-              </Button>
+              <a href="https://shop.delhibookmarket.com/bulk-order-dropshipping/">
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-black text-white hover:bg-gray-800 text-sm h-9"
+                >
+                  Bulk Inquiry
+                </Button>
+              </a>
             </div>
 
             {/* Delivery Check */}

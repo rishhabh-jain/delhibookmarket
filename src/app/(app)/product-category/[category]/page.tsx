@@ -1,8 +1,6 @@
 import React from "react";
 import ProductCategoryClient from "./ProductCategoryClient";
 
-export const revalidate = 259200; // 72 hours in seconds
-
 async function fetchInitialProducts(category: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -35,6 +33,38 @@ export default async function CategoryPage({
 }) {
   const { category } = await params;
 
+  const categoryObject: Record<
+    | "fiction"
+    | "non-fiction"
+    | "children"
+    | "romance"
+    | "self-help"
+    | "combo"
+    | "business"
+    | "manga"
+    | "finance"
+    | "classic"
+    | "all"
+    | "box-sets",
+    number | string
+  > = {
+    fiction: 538,
+    "non-fiction": 555,
+    children: 540,
+    romance: 560,
+    "self-help": 564,
+    combo: 745,
+    business: 528,
+    manga: 549,
+    finance: 539,
+    classic: 529,
+    all: "all",
+    "box-sets": 746,
+  };
+
+  const categoryId =
+    categoryObject[category.toLowerCase() as keyof typeof categoryObject];
+
   if (!category) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -46,7 +76,7 @@ export default async function CategoryPage({
   }
 
   // Fetch initial products for SSR
-  const { products } = await fetchInitialProducts(category);
+  const { products } = await fetchInitialProducts(String(categoryId));
 
   return (
     <ProductCategoryClient

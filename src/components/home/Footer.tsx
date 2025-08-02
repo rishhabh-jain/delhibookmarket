@@ -1,19 +1,21 @@
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300">
       {/* Join Community Section */}
-      <div className="bg-gray-800 py-12 text-center">
-        <h2 className="text-teal-400 text-xl font-semibold tracking-wider mb-6">
-          JOIN THE COMMUNITY
-        </h2>
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-full">
-          <Send className="w-6 h-6 text-gray-800" />
+      <a href="https://t.me/bookclubone">
+        <div className="bg-gray-800 py-12 text-center">
+          <h2 className="text-teal-400 text-xl font-semibold tracking-wider mb-6">
+            JOIN THE COMMUNITY
+          </h2>
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-full">
+            <Send className="w-6 h-6 text-gray-800" />
+          </div>
         </div>
-      </div>
-
+      </a>
       {/* Wavy Border */}
       <div className="relative">
         <svg
@@ -53,15 +55,23 @@ export default function Footer() {
           <div>
             <h3 className="text-teal-400 font-semibold mb-4">Find it fast</h3>
             <div className="space-y-2 text-sm">
-              <p className="hover:text-teal-400 cursor-pointer">FAQS</p>
-              <p className="hover:text-teal-400 cursor-pointer">All Books</p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                Track your order
-              </p>
-              <p className="hover:text-teal-400 cursor-pointer">Wishlist</p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                BULK ORDER / DROPSHIPPING
-              </p>
+              <a href="https://shop.delhibookmarket.com/faqs/">
+                <p className="hover:text-teal-400 cursor-pointer">FAQS</p>
+              </a>
+              <Link href="/product-category/all">
+                <p className="hover:text-teal-400 cursor-pointer">All Books</p>
+              </Link>
+              <a href="https://panel.shipmozo.com/track-order/nOXNBKEHQtjiM0VPIA8U">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Track your order
+                </p>
+              </a>
+
+              <a href="https://shop.delhibookmarket.com/bulk-order-dropshipping/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  BULK ORDER / DROPSHIPPING
+                </p>
+              </a>
             </div>
           </div>
 
@@ -69,13 +79,23 @@ export default function Footer() {
           <div>
             <h3 className="text-teal-400 font-semibold mb-4">Customer Care</h3>
             <div className="space-y-2 text-sm">
-              <p className="hover:text-teal-400 cursor-pointer">My Account</p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                Contact us on Insta
-              </p>
-              <p className="hover:text-teal-400 cursor-pointer">Email us</p>
-              <p className="hover:text-teal-400 cursor-pointer">My orders</p>
-              <p className="hover:text-teal-400 cursor-pointer">About Us</p>
+              <a href="https://shop.delhibookmarket.com/my-account-2/">
+                <p className="hover:text-teal-400 cursor-pointer">My Account</p>
+              </a>
+              <a href="https://www.instagram.com/delhibookmarket.in/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Contact us on Insta
+                </p>
+              </a>
+              <a href="mailto:support@delhibookmarket.in">
+                <p className="hover:text-teal-400 cursor-pointer">Email us</p>
+              </a>
+              <a href="https://shop.delhibookmarket.com/my-account-2/orders/">
+                <p className="hover:text-teal-400 cursor-pointer">My orders</p>
+              </a>
+              <a href="https://shop.delhibookmarket.com/about-us/">
+                <p className="hover:text-teal-400 cursor-pointer">About Us</p>
+              </a>
             </div>
           </div>
 
@@ -83,36 +103,50 @@ export default function Footer() {
           <div>
             <h3 className="text-teal-400 font-semibold mb-4">Policies</h3>
             <div className="space-y-2 text-sm">
-              <p className="hover:text-teal-400 cursor-pointer">
-                Returns and Refunds policy
-              </p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                Shipping Policy
-              </p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                Privacy Policy
-              </p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                Terms and Conditions
-              </p>
-              <p className="hover:text-teal-400 cursor-pointer">
-                Cancellation Policy
-              </p>
+              <a href="https://shop.delhibookmarket.com/returns-refunds-policy/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Returns and Refunds policy
+                </p>
+              </a>
+              <a href="https://shop.delhibookmarket.com/shipping-policy/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Shipping Policy
+                </p>
+              </a>
+              <a href="https://shop.delhibookmarket.com/privacy-policy/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Privacy Policy
+                </p>
+              </a>
+              <a href="https://shop.delhibookmarket.com/terms-and-conditions/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Terms and Conditions
+                </p>
+              </a>
+              <a href="https://shop.delhibookmarket.com/cancellation-policy/">
+                <p className="hover:text-teal-400 cursor-pointer">
+                  Cancellation Policy
+                </p>
+              </a>
             </div>
           </div>
         </div>
 
         {/* Bottom Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12 pt-8 border-t border-gray-700">
-          <Button
-            variant="destructive"
-            className="bg-red-500 hover:bg-red-600 text-white px-8 py-2 rounded-md"
-          >
-            ⊗ Cancel Order
-          </Button>
-          <Button className="bg-green-500 hover:bg-green-600 text-white px-8 py-2 rounded-md">
-            ⊙ Track Order
-          </Button>
+          <a href="https://wa.me/918588856833?text=Hi%20Delhi%20Book%20Market,%20I%20want%20to%20cancel%20my%20order">
+            <Button
+              variant="destructive"
+              className="bg-red-500 hover:bg-red-600 text-white px-8 py-2 rounded-md"
+            >
+              ⊗ Cancel Order
+            </Button>
+          </a>
+          <a href="https://panel.shipmozo.com/track-order/nOXNBKEHQtjiM0VPIA8U">
+            <Button className="bg-green-500 hover:bg-green-600 text-white px-8 py-2 rounded-md">
+              ⊙ Track Order
+            </Button>
+          </a>
         </div>
       </div>
     </footer>

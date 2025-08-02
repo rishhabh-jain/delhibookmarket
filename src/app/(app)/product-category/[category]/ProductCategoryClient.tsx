@@ -146,7 +146,7 @@ export default function ProductCategoryClient({
 
   const formatPrice = (price: string) => {
     const numPrice = Number.parseFloat(price);
-    return isNaN(numPrice) ? price : `$${numPrice.toFixed(2)}`;
+    return isNaN(numPrice) ? price : `₹${numPrice.toFixed(2)}`;
   };
 
   const getStockStatus = (quantity: number) => {
@@ -182,24 +182,10 @@ export default function ProductCategoryClient({
           <h1 className="text-3xl font-bold mb-2 capitalize">
             {category} Books
           </h1>
-          <p className="text-muted-foreground">
-            {isLoading
-              ? "Loading..."
-              : `Discover our collection of ${totalCount} books in ${category}`}
-          </p>
         </div>
 
         {/* Search and Filter Section */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1 md:max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search books..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full md:w-48">
               <SelectValue placeholder="Sort by" />
@@ -279,25 +265,7 @@ export default function ProductCategoryClient({
                           </h3>
                         </Link>
 
-                        <div className="flex items-center mb-3">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-3 w-3 ${
-                                  i < 4
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-1">
-                            (4.0)
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col justify-between">
                           <span className="text-lg font-bold text-primary">
                             {formatPrice(product.price)}
                           </span>
@@ -306,8 +274,7 @@ export default function ProductCategoryClient({
                             disabled={product.stock_quantity === 0}
                             className="h-8 px-3"
                           >
-                            <ShoppingCart className="h-3 w-3 mr-1" />
-                            Add
+                            View Product
                           </Button>
                         </div>
                       </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import Header from "@/components/header-footer/Header";
 import {
   CheckCircle,
   Mail,
@@ -8,13 +7,11 @@ import {
   MapPin,
   Package,
   ArrowRight,
-  Download,
-  MessageCircle,
   Loader2,
 } from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-
 interface OrderData {
   id: number;
   number: string;
@@ -179,16 +176,7 @@ export default function Component() {
                     {orderData.billing.email}
                   </span>
                 </p>
-                <div className="flex flex-wrap gap-3">
-                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                    <Mail className="w-4 h-4" />
-                    <span>View Email</span>
-                  </button>
-                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                    <Download className="w-4 h-4" />
-                    <span>Download Receipt</span>
-                  </button>
-                </div>
+                <p>We will sent you tracking id on whatsapp and on email</p>
               </div>
             </div>
 
@@ -339,22 +327,13 @@ export default function Component() {
           <div className="space-y-6">
             {/* Quick Actions */}
             <div className="bg-white rounded-lg shadow-md border-0">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                    Track Your Order
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                    Contact Support
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
+              <div className="space-y-3">
+                <Link href="/">
                   <button className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
                     Continue Shopping
                     <ArrowRight className="w-4 h-4" />
                   </button>
-                </div>
+                </Link>
               </div>
             </div>
 

@@ -161,6 +161,12 @@ export default function UserReviews() {
             Quick and hassle-free ordering process.
           </p>
         </div>
+
+        <a href="https://shop.delhibookmarket.com/customer-reviews/">
+          <button className="mt-4 text-sm hover:underline bg-blue-600 rounded-xl mx-auto text-white p-4 flex items-center justify-centerç">
+            View All
+          </button>
+        </a>
       </div>
     </div>
   );

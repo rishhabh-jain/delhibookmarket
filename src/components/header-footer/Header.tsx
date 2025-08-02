@@ -1,16 +1,41 @@
 "use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, Menu, Search, ShoppingCart, X } from "lucide-react";
+import { Heart, Menu, Search, ShoppingCart, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useCart } from "@/context/CartContext";
 import BookSearchBar from "../search/Searchbar";
 
 export default function Header() {
   const { items, total } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+
+  const topCategories = [
+    { name: "Fiction", href: "/product-category/fiction" },
+    { name: "Self Help", href: "/product-category/self-help" },
+    { name: "Finance", href: "/product-category/finance" },
+    { name: "Startup/Business", href: "/product-category/business" },
+    { name: "Bestsellers", href: "/product-category/all" },
+    { name: "Romance", href: "/product-category/romance" },
+    { name: "Trading/Stock", href: "/product-category/finance" },
+    { name: "Manga", href: "/product-category/manga" },
+  ];
 
   return (
     <div>
@@ -20,19 +45,153 @@ export default function Header() {
           <div className="flex h-16 items-center justify-between">
             {/* Left section - Logo and mobile menu */}
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden hover:bg-gray-100"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                {isMenuOpen ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
-                <span className="sr-only">Menu</span>
-              </Button>
+              <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden hover:bg-gray-100"
+                  >
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-80 p-0">
+                  <SheetHeader className="p-6 border-b">
+                    <SheetTitle className="text-left">Menu</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col h-full overflow-y-auto">
+                    <nav className="flex flex-col p-4 space-y-1">
+                      <a
+                        href="shop.delhibookmarket.com/my-account-2/"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        My Account
+                      </a>
+
+                      <Link
+                        href="/"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Home
+                      </Link>
+
+                      {/* Top Categories with nested items */}
+                      <Collapsible
+                        open={isCategoriesOpen}
+                        onOpenChange={setIsCategoriesOpen}
+                      >
+                        <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+                          <span>Top Categories</span>
+                          <ChevronRight
+                            className={`h-4 w-4 transition-transform ${
+                              isCategoriesOpen ? "rotate-90" : ""
+                            }`}
+                          />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="ml-4 mt-1 space-y-1">
+                          {topCategories.map((category) => (
+                            <Link
+                              key={category.name}
+                              href={category.href}
+                              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              {category.name}
+                            </Link>
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+
+                      <Link
+                        href="/prouduct-category/fiction"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Fiction Books
+                      </Link>
+
+                      <Link
+                        href="/product-category/all"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        All Books / Categories
+                      </Link>
+
+                      <Link
+                        href="/product-category/non-fiction"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Non Fiction Books
+                      </Link>
+
+                      <a
+                        href="https://panel.shipmozo.com/track-order/nOXNBKEHQtjiM0VPIA8U"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Track Order
+                      </a>
+
+                      <a
+                        href="https://shop.delhibookmarket.com/contact/"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Contact Us
+                      </a>
+
+                      <a
+                        href="https://shop.delhibookmarket.com/bulk-order-dropshipping/"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Bulk Order/Dropshipping
+                      </a>
+
+                      <Link
+                        href="/product-category/manga"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Manga Books
+                      </Link>
+
+                      <Link
+                        href="/product-category/combos"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Combos
+                      </Link>
+
+                      <a
+                        href="https://shop.delhibookmarket.com/vendor-registration-3/"
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Sell Textbooks
+                      </a>
+
+                      {/* Wishlist for mobile */}
+                      {/* <div className="border-t border-gray-200 pt-4 mt-4">
+                        <Link
+                          href="/wishlist"
+                          className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-2 transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Heart className="h-4 w-4" />
+                          Wishlist
+                        </Link>
+                      </div> */}
+                    </nav>
+                  </div>
+                </SheetContent>
+              </Sheet>
 
               <Link href="/" className="flex items-center">
                 <img
@@ -45,14 +204,7 @@ export default function Header() {
 
             {/* Center section - Search (hidden on mobile) */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  placeholder="Search books, authors, genres..."
-                  className="pl-10 pr-4 py-2 w-full border-gray-300 focus:border-red-500 focus:ring-red-500"
-                />
-              </div>
+              <BookSearchBar />
             </div>
 
             {/* Right section - Actions */}
@@ -78,7 +230,6 @@ export default function Header() {
                 <div className="text-lg font-semibold text-gray-900 sm:hidden">
                   ₹{total}
                 </div>
-
                 <Link href="/cart">
                   <Button
                     variant="ghost"
@@ -104,67 +255,24 @@ export default function Header() {
               <BookSearchBar />
             </div>
           </div>
-
-          {/* Mobile menu */}
-          {isMenuOpen && (
-            <div className="md:hidden border-t border-gray-200 py-4">
-              <nav className="flex flex-col space-y-2">
-                <Link
-                  href="/categories"
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                >
-                  Categories
-                </Link>
-                <Link
-                  href="/bestsellers"
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                >
-                  Bestsellers
-                </Link>
-                <Link
-                  href="/new-arrivals"
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                >
-                  New Arrivals
-                </Link>
-                <Link
-                  href="/offers"
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
-                >
-                  Offers
-                </Link>
-                <div className="border-t border-gray-200 pt-2 mt-2">
-                  <Link
-                    href="/wishlist"
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-2"
-                  >
-                    <Heart className="h-4 w-4" />
-                    Wishlist
-                  </Link>
-                </div>
-              </nav>
-            </div>
-          )}
         </div>
 
         {/* Promotional banner */}
-        <div className="bg-gradient-to-r from-red-600 via-red-500 to-red-600 py-2.5 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-black/10"></div>
-          <div className="relative">
-            <div className="animate-marquee whitespace-nowrap">
-              <span className="inline-block font-medium tracking-wide text-sm px-8">
-                🚚 FREE SHIPPING ON ORDERS ABOVE ₹499 | 📚 FLAT 20% OFF ON FIRST
-                ORDER | 🎉 NEW ARRIVALS EVERY WEEK | 💝 SPECIAL DISCOUNTS FOR
-                STUDENTS
-              </span>
-              <span className="inline-block font-medium tracking-wide text-sm px-8">
-                🚚 FREE SHIPPING ON ORDERS ABOVE ₹499 | 📚 FLAT 20% OFF ON FIRST
-                ORDER | 🎉 NEW ARRIVALS EVERY WEEK | 💝 SPECIAL DISCOUNTS FOR
-                STUDENTS
-              </span>
+        <Link href="/promo-code">
+          <div className="bg-gradient-to-r from-red-600 via-red-500 to-red-600 py-2.5 text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="relative">
+              <div className="animate-marquee whitespace-nowrap">
+                <span className="inline-block font-medium tracking-wide text-sm px-8">
+                  CLICK TO CHECK SALE OFFERS
+                </span>
+                <span className="inline-block font-medium tracking-wide text-sm px-8">
+                  CLICK TO CHECK SALE OFFERS
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </Link>
       </header>
     </div>
   );
