@@ -3,7 +3,7 @@ import path from "path";
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://delhibookmarket.com/wp-json/wc/v3/",
+  baseURL: "https://shop.delhibookmarket.com/wp-json/wc/v3/",
   auth: {
     username: "ck_a40ec0ca8305b354802fb33d3d603cdda79086d6",
     password: "cs_eafa40614a8fbf870f9fe3b48138053dee2e1174",
