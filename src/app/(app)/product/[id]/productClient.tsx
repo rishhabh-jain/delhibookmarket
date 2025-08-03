@@ -1,11 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Star,
   Check,
   Minus,
   Plus,
-  Heart,
   Shield,
   CreditCard,
   Truck,
@@ -28,8 +27,10 @@ import {
 import { useRouter } from "next/navigation";
 import { useAlert } from "@/context/AlertContext";
 import CountDownTimer from "@/components/product/CountDownTimer";
+import Image from "next/image";
+import axios from "axios";
 
-interface WooProduct {
+export interface WooProduct {
   id: number;
   name: string;
   permalink: string;
@@ -76,51 +77,186 @@ interface ProductClientProps {
   product: WooProduct;
 }
 
+interface StockResponse {
+  stock_quantity: number;
+  stock_status: "instock" | "outofstock" | "onbackorder";
+}
+
 export default function ProductClient({ product }: ProductClientProps) {
   const { showToast } = useAlert();
   const [quantity, setQuantity] = useState(1);
   const [pincode, setPincode] = useState("");
   const [isAdded, setIsAdded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const [stockStatus, setStockStatus] = useState<StockResponse | null>(null);
+  const [isStockDataFetched, setIsStockDataFetched] = useState(false);
+  const [stockCheckLoading, setStockCheckLoading] = useState(false);
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 4,
-    minutes: 46,
-    seconds: 54,
-  });
+
   const [deliveryData, setDeliveryData] = useState<DeliveryInfo | null>(null);
   const currentProduct = product;
-  const { addWooProduct, items } = useCart();
+  const { addWooProduct } = useCart();
 
-  const handleAddToCart = () => {
-    if (isAdded) return;
+  const checkStockPromiseRef = useRef<Promise<void> | null>(null);
 
-    if (currentProduct?.stock_quantity === 0) {
-      showToast({
-        variant: "warning",
-        message: "This product is currently out of stock.",
+  const checkStock = async () => {
+    try {
+      const {
+        data: { response },
+      } = await axios.post(
+        "/api/check-stock-only",
+        { id: currentProduct.id },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log(response);
+      setStockStatus({
+        stock_quantity: response.stock_quantity,
+        stock_status: response.stock_status,
       });
-      return;
+    } catch (error) {
+      console.log("Error checking stock:", error);
+      // Set fallback stock data from product prop
+      setStockStatus({
+        stock_quantity: currentProduct.stock_quantity,
+        stock_status: currentProduct.stock_status,
+      });
+    } finally {
+      setIsStockDataFetched(true);
+      setStockCheckLoading(false);
     }
-
-    setIsLoading(true);
-
-    addWooProduct(product, quantity);
-
-    setIsLoading(false);
-    setIsAdded(true);
-
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 3000);
   };
 
-  const handleDirectCheckout = (product: WooProduct) => {
-    // Add the product to existing cart (doesn't clear previous items)
-    addWooProduct(product, quantity);
+  const handleAddToCart = async () => {
+    if (isAdded || isAddingToCart) return;
 
-    // Navigate to checkout
-    router.push("/checkout");
+    setIsAddingToCart(true);
+
+    try {
+      // If stock data is not fetched yet, wait for it
+      if (!isStockDataFetched) {
+        setStockCheckLoading(true);
+        await checkStockPromiseRef.current;
+      }
+
+      // Check stock after ensuring data is fetched
+      const currentStockStatus = stockStatus || {
+        stock_quantity: currentProduct.stock_quantity,
+        stock_status: currentProduct.stock_status,
+      };
+
+      if (
+        currentStockStatus.stock_status === "outofstock" ||
+        (currentStockStatus.stock_quantity !== null &&
+          currentStockStatus.stock_quantity === 0)
+      ) {
+        showToast({
+          variant: "warning",
+          message: "This product is currently out of stock.",
+        });
+        return;
+      }
+
+      if (quantity > currentStockStatus.stock_quantity) {
+        showToast({
+          variant: "warning",
+          message: `Only ${currentStockStatus.stock_quantity} items available in stock.`,
+        });
+        return;
+      }
+
+      addWooProduct(
+        {
+          ...currentProduct,
+          stock_quantity: currentStockStatus.stock_quantity,
+          stock_status: currentStockStatus.stock_status,
+        },
+        quantity
+      );
+
+      setIsAdded(true);
+      showToast({
+        variant: "success",
+        message: "Product added to cart successfully!",
+      });
+
+      setTimeout(() => {
+        setIsAdded(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      showToast({
+        variant: "warning",
+        message: "Failed to add product to cart. Please try again.",
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const handleDirectCheckout = async () => {
+    if (isBuyingNow) return;
+
+    setIsBuyingNow(true);
+
+    try {
+      // If stock data is not fetched yet, wait for it
+      if (!isStockDataFetched) {
+        setStockCheckLoading(true);
+        await checkStockPromiseRef.current;
+      }
+
+      // Check stock after ensuring data is fetched
+      const currentStockStatus = stockStatus || {
+        stock_quantity: currentProduct.stock_quantity,
+        stock_status: currentProduct.stock_status,
+      };
+
+      if (
+        currentStockStatus.stock_status === "outofstock" ||
+        (currentStockStatus.stock_quantity !== null &&
+          currentStockStatus.stock_quantity === 0)
+      ) {
+        showToast({
+          variant: "warning",
+          message: "This product is currently out of stock.",
+        });
+        return;
+      }
+
+      if (quantity > currentStockStatus.stock_quantity) {
+        showToast({
+          variant: "warning",
+          message: `Only ${currentStockStatus.stock_quantity} items available in stock.`,
+        });
+        return;
+      }
+
+      // Add the product to cart
+      addWooProduct(
+        {
+          ...currentProduct,
+          stock_quantity: currentStockStatus.stock_quantity,
+          stock_status: currentStockStatus.stock_status,
+        },
+        quantity
+      );
+
+      // Navigate to checkout
+      router.push("/checkout");
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      showToast({
+        variant: "warning",
+        message: "Failed to proceed to checkout. Please try again.",
+      });
+    } finally {
+      setIsBuyingNow(false);
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -148,9 +284,37 @@ export default function ProductClient({ product }: ProductClientProps) {
     );
   };
 
-  const IsInStock =
-    currentProduct?.stock_quantity > 0 ||
-    currentProduct?.stock_status === "instock";
+  useEffect(() => {
+    const promise = checkStock();
+    checkStockPromiseRef.current = promise;
+  }, []);
+
+  // Get current stock information
+  const getCurrentStock = () => {
+    if (stockStatus) {
+      return {
+        quantity: stockStatus.stock_quantity,
+        status: stockStatus.stock_status,
+        isInStock:
+          stockStatus.stock_quantity > 0 &&
+          stockStatus.stock_status === "instock",
+      };
+    }
+    // Fallback to product data
+    return {
+      quantity: currentProduct.stock_quantity,
+      status: currentProduct.stock_status,
+      isInStock:
+        currentProduct.stock_quantity > 0 &&
+        currentProduct.stock_status === "instock",
+    };
+  };
+
+  const {
+    quantity: stockQuantity,
+    status: stockStatusValue,
+    isInStock,
+  } = getCurrentStock();
 
   return (
     <>
@@ -168,13 +332,15 @@ export default function ProductClient({ product }: ProductClientProps) {
           {/* Product Image */}
           <div className="lg:col-span-1">
             <div className="sticky top-4">
-              <img
+              <Image
                 src={
                   currentProduct?.images[0]?.src ||
                   "/placeholder.svg?height=500&width=350" ||
                   "/placeholder.svg"
                 }
                 alt={currentProduct?.images[0]?.alt || currentProduct?.name}
+                width={300}
+                height={400}
                 className="w-full h-auto rounded-lg shadow-md"
               />
             </div>
@@ -193,24 +359,22 @@ export default function ProductClient({ product }: ProductClientProps) {
 
             <div className="flex items-center gap-6 text-sm">
               <div className="flex items-center gap-1">
-                {IsInStock ? (
-                  <Check
-                    className={`w-4 h-4 ${
-                      IsInStock ? "text-green-600" : "text-red-600"
-                    }`}
-                  />
+                {stockCheckLoading ? (
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                ) : isInStock ? (
+                  <Check className="w-4 h-4 text-green-600" />
                 ) : (
-                  <X
-                    className={`w-4 h-4 ${
-                      IsInStock ? "text-green-600" : "text-red-600"
-                    }`}
-                  />
+                  <X className="w-4 h-4 text-red-600" />
                 )}
 
                 <span
-                  className={`${IsInStock ? "text-green-600" : "text-red-600"}`}
+                  className={`${isInStock ? "text-green-600" : "text-red-600"}`}
                 >
-                  {IsInStock ? `Available` : "Out of stock"}
+                  {stockCheckLoading
+                    ? "Checking availability..."
+                    : isInStock
+                    ? "Available"
+                    : "Out of stock"}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -272,21 +436,17 @@ export default function ProductClient({ product }: ProductClientProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
-                  {IsInStock ? (
-                    <Check
-                      className={`w-4 h-4 ${
-                        IsInStock ? "text-green-600" : "text-red-600"
-                      }`}
-                    />
+                  {stockCheckLoading ? (
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  ) : isInStock ? (
+                    <Check className="w-4 h-4 text-green-600" />
                   ) : (
-                    <X
-                      className={`w-4 h-4 ${
-                        IsInStock ? "text-green-600" : "text-red-600"
-                      }`}
-                    />
+                    <X className="w-4 h-4 text-red-600" />
                   )}
-                  <span className={`text-${IsInStock ? "green" : "red"}-600`}>
-                    {currentProduct?.stock_quantity} in stock
+                  <span className={`text-${isInStock ? "green" : "red"}-600`}>
+                    {stockCheckLoading
+                      ? "Checking stock..."
+                      : `${stockQuantity} in stock`}
                   </span>
                 </div>
 
@@ -301,6 +461,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                         size="sm"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         className="px-2 h-8"
+                        disabled={stockCheckLoading}
                       >
                         <Minus className="w-3 h-3" />
                       </Button>
@@ -311,14 +472,10 @@ export default function ProductClient({ product }: ProductClientProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          setQuantity(
-                            Math.min(
-                              currentProduct?.stock_quantity ?? 1,
-                              quantity + 1
-                            )
-                          )
+                          setQuantity(Math.min(stockQuantity, quantity + 1))
                         }
                         className="px-2 h-8"
+                        disabled={stockCheckLoading}
                       >
                         <Plus className="w-3 h-3" />
                       </Button>
@@ -336,10 +493,10 @@ export default function ProductClient({ product }: ProductClientProps) {
                       : "bg-transparent hover:bg-gray-50"
                   }`}
                   onClick={handleAddToCart}
-                  disabled={isLoading || !IsInStock}
+                  disabled={isAddingToCart || !isInStock || stockCheckLoading}
                 >
                   <div className="flex items-center justify-center gap-2 relative z-10">
-                    {isLoading ? (
+                    {isAddingToCart ? (
                       <>
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                         <span>Adding...</span>
@@ -355,7 +512,11 @@ export default function ProductClient({ product }: ProductClientProps) {
                       <>
                         <ShoppingCart className="w-4 h-4" />
                         <span>
-                          {IsInStock ? "Add to basket" : "Out of stock"}
+                          {stockCheckLoading
+                            ? "Checking stock..."
+                            : isInStock
+                            ? "Add to basket"
+                            : "Out of stock"}
                         </span>
                       </>
                     )}
@@ -368,13 +529,22 @@ export default function ProductClient({ product }: ProductClientProps) {
                 </Button>
 
                 <Button
-                  onClick={() => {
-                    handleDirectCheckout(product);
-                  }}
+                  onClick={handleDirectCheckout}
                   className="w-full bg-black hover:bg-gray-800 text-white text-sm h-9 transition-colors duration-200"
-                  disabled={isLoading || !IsInStock}
+                  disabled={isBuyingNow || !isInStock || stockCheckLoading}
                 >
-                  {IsInStock ? "Buy Now" : "Out of stock"}
+                  {isBuyingNow ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : stockCheckLoading ? (
+                    "Checking stock..."
+                  ) : isInStock ? (
+                    "Buy Now"
+                  ) : (
+                    "Out of stock"
+                  )}
                 </Button>
 
                 {/* Cart counter animation */}
@@ -388,7 +558,6 @@ export default function ProductClient({ product }: ProductClientProps) {
             </div>
 
             {/* Countdown Timer */}
-
             <CountDownTimer
               initialTime={{ hours: 1, minutes: 0, seconds: 0 }}
               title="Limited Time Offer"

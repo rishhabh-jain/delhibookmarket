@@ -126,17 +126,33 @@ export default function BookSearchBar() {
     );
   };
 
+  // Check if product is a combo/series/set
+  const isComboProduct = (product: Product): boolean => {
+    return /(\+|combo|bundle|set|collection|series|box|boxset|complete|volume|pack)/i.test(
+      product.name
+    );
+  };
+
+  // Check if search query is looking for combo/series products
+  const isComboQuery = (query: string): boolean => {
+    const comboKeywords =
+      /\b(set|sets|series|combo|combos|bundle|bundles|collection|collections|box|boxset|boxsets|complete|pack|packs|volume|volumes)\b/i;
+    return comboKeywords.test(query.toLowerCase());
+  };
+
   // Advanced fuzzy search function
   const fuzzySearch = (products: Product[], query: string): SearchResult[] => {
     if (!query.trim()) return [];
 
     const normalizedQuery = normalizeText(query);
     const results: SearchResult[] = [];
+    const isQueryForCombo = isComboQuery(query);
 
     products.forEach((product) => {
       const bookTitle = normalizeText(extractBookTitle(product.name));
       const author = normalizeText(extractAuthor(product.name));
       const slug = normalizeText(product.slug.replace(/-/g, " "));
+      const isProductCombo = isComboProduct(product);
 
       let bestScore = 0;
       let matchType: "exact" | "fuzzy" | "partial" = "partial";
@@ -186,6 +202,23 @@ export default function BookSearchBar() {
         }
       }
 
+      // Apply combo/series logic
+      if (isQueryForCombo) {
+        // User is looking for combo products - boost combo products significantly
+        if (isProductCombo) {
+          bestScore *= 1.5; // Significant boost for combo products
+        } else {
+          bestScore *= 0.3; // Heavy penalty for single books
+        }
+      } else {
+        // User is NOT looking for combo products - prioritize single books
+        if (isProductCombo) {
+          bestScore *= 0.4; // Heavy penalty for combo products
+        } else {
+          bestScore *= 1.2; // Slight boost for single books
+        }
+      }
+
       // Boost score for in-stock items
       if (product.stock_quantity > 0) {
         bestScore *= 1.1;
@@ -201,16 +234,22 @@ export default function BookSearchBar() {
       }
     });
 
-    // Sort by score (descending) and match type priority
-    // Replace the existing fuzzySearch function's sorting logic with this:
+    // Sort results
     return results
       .sort((a, b) => {
-        // Deprioritize combo books (check if name contains multiple book titles or "combo", "bundle", "set")
-        const aIsCombo = /(\+|combo|bundle|set|collection)/i.test(a.name);
-        const bIsCombo = /(\+|combo|bundle|set|collection)/i.test(b.name);
+        const aIsCombo = isComboProduct(a);
+        const bIsCombo = isComboProduct(b);
 
-        if (aIsCombo && !bIsCombo) return 1; // b comes first
-        if (!aIsCombo && bIsCombo) return -1; // a comes first
+        // If user is searching for combo products
+        if (isQueryForCombo) {
+          // Prioritize combo products
+          if (aIsCombo && !bIsCombo) return -1;
+          if (!aIsCombo && bIsCombo) return 1;
+        } else {
+          // User is NOT searching for combo products - prioritize single books
+          if (aIsCombo && !bIsCombo) return 1;
+          if (!aIsCombo && bIsCombo) return -1;
+        }
 
         // Prioritize exact matches, then fuzzy, then partial
         const typeScore = { exact: 3, fuzzy: 2, partial: 1 };
@@ -233,8 +272,7 @@ export default function BookSearchBar() {
       setFilteredProducts([]);
       setShowResults(false);
       setSelectedIndex(-1);
-      setIsLoading(false); // Add this line
-
+      setIsLoading(false);
       return;
     }
 
@@ -355,7 +393,7 @@ export default function BookSearchBar() {
         <input
           ref={searchRef}
           type="text"
-          placeholder="Search for books, authors... (smart search with typo tolerance)"
+          placeholder="Search for books, authors, sets, series... (smart search with typo tolerance)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -390,6 +428,7 @@ export default function BookSearchBar() {
           {filteredProducts.map((product, index) => {
             const bookTitle = extractBookTitle(product.name);
             const author = extractAuthor(product.name);
+            const isProductCombo = isComboProduct(product);
 
             return (
               <div
@@ -421,12 +460,19 @@ export default function BookSearchBar() {
 
                 {/* Book Details */}
                 <div className="flex-grow min-w-0">
-                  <h3
-                    className="font-semibold text-gray-900 truncate text-sm"
-                    dangerouslySetInnerHTML={{
-                      __html: highlightMatch(bookTitle, searchTerm),
-                    }}
-                  />
+                  <div className="flex items-center gap-2">
+                    <h3
+                      className="font-semibold text-gray-900 truncate text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightMatch(bookTitle, searchTerm),
+                      }}
+                    />
+                    {isProductCombo && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 font-medium">
+                        Set
+                      </span>
+                    )}
+                  </div>
                   {author && (
                     <p
                       className="text-sm text-gray-600 truncate"
@@ -467,8 +513,9 @@ export default function BookSearchBar() {
           {/* Show more results indicator */}
           {filteredProducts.length === 8 && (
             <div className="p-3 text-center text-sm text-gray-500 bg-gray-50">
-              Showing top 8 smart matches. Try a more specific search for better
-              results.
+              {isComboQuery(searchTerm)
+                ? "Showing top 8 sets and series. Try a more specific search for better results."
+                : "Showing top 8 smart matches. Try a more specific search for better results."}
             </div>
           )}
         </div>
@@ -486,6 +533,14 @@ export default function BookSearchBar() {
               <p className="text-sm mt-1">
                 Try different keywords or check for typos. Our smart search
                 handles most spelling variations!
+                {isComboQuery(searchTerm) && (
+                  <>
+                    <br />
+                    <span className="text-purple-600">
+                      Looking for sets/series? Try broader terms.
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </div>
