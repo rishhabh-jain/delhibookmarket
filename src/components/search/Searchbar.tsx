@@ -133,11 +133,137 @@ export default function BookSearchBar() {
     );
   };
 
-  // Check if search query is looking for combo/series products
+  // Smart combo query detection with fuzzy matching for partial words
   const isComboQuery = (query: string): boolean => {
-    const comboKeywords =
-      /\b(set|sets|series|combo|combos|bundle|bundles|collection|collections|box|boxset|boxsets|complete|pack|packs|volume|volumes)\b/i;
-    return comboKeywords.test(query.toLowerCase());
+    const normalizedQuery = normalizeText(query);
+    const words = normalizedQuery.split(/\s+/);
+
+    // Define combo keywords and their common variations/typos
+    const comboPatterns = {
+      set: ["set", "sets", "sett", "sete"],
+      series: ["series", "serie", "seri", "ser", "seres", "seris"],
+      combo: ["combo", "combos", "com", "comb", "compo"],
+      bundle: ["bundle", "bundles", "bundl", "bund", "bundel"],
+      collection: ["collection", "collections", "collect", "col", "collec"],
+      box: ["box", "boxes", "boxs", "boxe"],
+      boxset: ["boxset", "boxsets", "box set", "box sets"],
+      complete: ["complete", "complet", "comp", "complte"],
+      pack: ["pack", "packs", "pak", "packe"],
+      volume: ["volume", "volumes", "vol", "vols", "volum"],
+    };
+
+    // Check each word in the query
+    for (const word of words) {
+      // Direct pattern matching for partial words
+      for (const [mainKeyword, variations] of Object.entries(comboPatterns)) {
+        // Check if word matches any variation exactly
+        if (variations.some((variation) => variation === word)) {
+          return true;
+        }
+
+        // Check if word is a prefix of any variation (for partial typing)
+        if (
+          variations.some(
+            (variation) => variation.startsWith(word) && word.length >= 2
+          )
+        ) {
+          return true;
+        }
+
+        // Fuzzy matching for typos (minimum 3 characters for fuzzy matching)
+        if (word.length >= 3) {
+          for (const variation of variations) {
+            const similarity = calculateSimilarity(word, variation);
+            // Lower threshold for shorter words, higher for longer ones
+            const threshold = variation.length <= 4 ? 0.6 : 0.7;
+            if (similarity >= threshold) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // Additional check for single character queries that might be starting combo words
+    if (normalizedQuery.length === 1) {
+      const singleCharStarters = ["s", "c", "b", "p", "v"]; // series, combo, box/bundle, pack, volume
+      return singleCharStarters.includes(normalizedQuery);
+    }
+
+    // Check for two character queries
+    if (normalizedQuery.length === 2) {
+      const twoCharStarters = [
+        "se",
+        "sr",
+        "co",
+        "cm",
+        "bo",
+        "bx",
+        "pa",
+        "pk",
+        "vo",
+        "vl",
+      ];
+      return twoCharStarters.includes(normalizedQuery);
+    }
+
+    return false;
+  };
+
+  // Get combo query confidence level
+  const getComboQueryConfidence = (query: string): number => {
+    const normalizedQuery = normalizeText(query);
+    const words = normalizedQuery.split(/\s+/);
+
+    const exactComboKeywords = [
+      "set",
+      "sets",
+      "series",
+      "combo",
+      "combos",
+      "bundle",
+      "bundles",
+      "collection",
+      "collections",
+      "box",
+      "boxes",
+      "boxset",
+      "boxsets",
+      "complete",
+      "pack",
+      "packs",
+      "volume",
+      "volumes",
+    ];
+
+    // High confidence for exact matches
+    if (words.some((word) => exactComboKeywords.includes(word))) {
+      return 1.0;
+    }
+
+    // Medium confidence for partial matches and common typos
+    const partialMatches = [
+      "ser",
+      "seri",
+      "serie",
+      "com",
+      "comb",
+      "boxe",
+      "complet",
+    ];
+    if (words.some((word) => partialMatches.includes(word))) {
+      return 0.8;
+    }
+
+    // Lower confidence for very short queries that might be combo-related
+    if (
+      normalizedQuery.length <= 2 &&
+      ["s", "c", "b", "se", "co", "bo"].includes(normalizedQuery)
+    ) {
+      return 0.3;
+    }
+
+    return 0.0;
   };
 
   // Advanced fuzzy search function
@@ -147,6 +273,7 @@ export default function BookSearchBar() {
     const normalizedQuery = normalizeText(query);
     const results: SearchResult[] = [];
     const isQueryForCombo = isComboQuery(query);
+    const comboConfidence = getComboQueryConfidence(query);
 
     products.forEach((product) => {
       const bookTitle = normalizeText(extractBookTitle(product.name));
@@ -202,21 +329,37 @@ export default function BookSearchBar() {
         }
       }
 
-      // Apply combo/series logic
+      // Enhanced combo/series logic with confidence levels
       if (isQueryForCombo) {
-        // User is looking for combo products - boost combo products significantly
+        // User is looking for combo products
         if (isProductCombo) {
-          bestScore *= 1.5; // Significant boost for combo products
+          // Boost based on confidence level
+          const boostMultiplier = 1.2 + comboConfidence * 0.8; // 1.2 to 2.0
+          bestScore *= boostMultiplier;
         } else {
-          bestScore *= 0.3; // Heavy penalty for single books
+          // Penalty for single books, but less harsh for low confidence queries
+          const penaltyMultiplier = comboConfidence > 0.7 ? 0.2 : 0.5;
+          bestScore *= penaltyMultiplier;
         }
       } else {
         // User is NOT looking for combo products - prioritize single books
         if (isProductCombo) {
-          bestScore *= 0.4; // Heavy penalty for combo products
+          bestScore *= 0.4; // Penalty for combo products
         } else {
-          bestScore *= 1.2; // Slight boost for single books
+          bestScore *= 1.2; // Boost for single books
         }
+      }
+
+      // For very short queries that might be combo-related, show both types but prefer combos
+      if (
+        normalizedQuery.length <= 3 &&
+        isQueryForCombo &&
+        comboConfidence <= 0.5
+      ) {
+        if (isProductCombo) {
+          bestScore *= 1.3; // Moderate boost for combos
+        }
+        // Don't penalize single books as much for ambiguous short queries
       }
 
       // Boost score for in-stock items
@@ -224,8 +367,14 @@ export default function BookSearchBar() {
         bestScore *= 1.1;
       }
 
-      // Include results with score > 0.4 (adjustable threshold)
-      if (bestScore > 0.4) {
+      // Dynamic threshold based on query length and combo confidence
+      let threshold = 0.4;
+      if (isQueryForCombo) {
+        // Lower threshold for combo queries to show more results
+        threshold = comboConfidence > 0.7 ? 0.3 : 0.35;
+      }
+
+      if (bestScore > threshold) {
         results.push({
           ...product,
           score: bestScore,
@@ -234,7 +383,7 @@ export default function BookSearchBar() {
       }
     });
 
-    // Sort results
+    // Enhanced sorting logic
     return results
       .sort((a, b) => {
         const aIsCombo = isComboProduct(a);
@@ -242,9 +391,19 @@ export default function BookSearchBar() {
 
         // If user is searching for combo products
         if (isQueryForCombo) {
-          // Prioritize combo products
-          if (aIsCombo && !bIsCombo) return -1;
-          if (!aIsCombo && bIsCombo) return 1;
+          // Strong preference for combo products when confidence is high
+          if (comboConfidence > 0.7) {
+            if (aIsCombo && !bIsCombo) return -1;
+            if (!aIsCombo && bIsCombo) return 1;
+          }
+          // Moderate preference when confidence is medium
+          else if (comboConfidence > 0.3) {
+            const aComboBonus = aIsCombo ? 0.2 : 0;
+            const bComboBonus = bIsCombo ? 0.2 : 0;
+            const adjustedScoreDiff =
+              b.score + bComboBonus - (a.score + aComboBonus);
+            if (Math.abs(adjustedScoreDiff) > 0.1) return adjustedScoreDiff;
+          }
         } else {
           // User is NOT searching for combo products - prioritize single books
           if (aIsCombo && !bIsCombo) return 1;
@@ -263,7 +422,7 @@ export default function BookSearchBar() {
         // Finally by stock availability
         return (b.stock_quantity > 0 ? 1 : 0) - (a.stock_quantity > 0 ? 1 : 0);
       })
-      .slice(0, 8);
+      .slice(0, 10); // Show more results for combo queries
   };
 
   // Advanced search with debouncing
@@ -278,14 +437,14 @@ export default function BookSearchBar() {
 
     setIsLoading(true);
 
-    // Debounce search
+    // Shorter debounce for better responsiveness with smart matching
     const timeoutId = setTimeout(() => {
       const results = fuzzySearch(products, searchTerm);
       setFilteredProducts(results);
       setShowResults(true);
       setSelectedIndex(-1);
       setIsLoading(false);
-    }, 150);
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, products]);
@@ -382,6 +541,17 @@ export default function BookSearchBar() {
     }
   };
 
+  // Get search suggestion text
+  const getSearchSuggestionText = () => {
+    const isQueryForCombo = isComboQuery(searchTerm);
+    const confidence = getComboQueryConfidence(searchTerm);
+
+    if (isQueryForCombo && confidence > 0.3) {
+      return "Smart search detected: Looking for sets, series, or combos";
+    }
+    return "";
+  };
+
   return (
     <div className="relative w-full max-w-2xl my-2" ref={resultsRef}>
       {/* Search Input */}
@@ -393,7 +563,7 @@ export default function BookSearchBar() {
         <input
           ref={searchRef}
           type="text"
-          placeholder="Search for books, authors, sets, series... (smart search with typo tolerance)"
+          placeholder="Search books, authors, sets, series... Try: 'ser', 'com', 'boxe', 'sett'"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -412,12 +582,20 @@ export default function BookSearchBar() {
         )}
       </div>
 
+      {/* Smart Search Indicator */}
+      {searchTerm && isComboQuery(searchTerm) && (
+        <div className="mt-1 text-xs text-purple-600 flex items-center">
+          <span className="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></span>
+          {getSearchSuggestionText()}
+        </div>
+      )}
+
       {/* Loading State */}
       {isLoading && (
         <div className="absolute top-full left-0 right-0 bg-white border border-t-0 rounded-b-lg shadow-lg z-50 p-4">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span className="ml-2 text-gray-600">Searching...</span>
+            <span className="ml-2 text-gray-600">Smart searching...</span>
           </div>
         </div>
       )}
@@ -511,11 +689,11 @@ export default function BookSearchBar() {
           })}
 
           {/* Show more results indicator */}
-          {filteredProducts.length === 8 && (
+          {filteredProducts.length === 10 && (
             <div className="p-3 text-center text-sm text-gray-500 bg-gray-50">
               {isComboQuery(searchTerm)
-                ? "Showing top 8 sets and series. Try a more specific search for better results."
-                : "Showing top 8 smart matches. Try a more specific search for better results."}
+                ? "Showing top smart matches for sets and series. Try more specific terms for better results."
+                : "Showing top 10 smart matches. Try a more specific search for better results."}
             </div>
           )}
         </div>
@@ -531,13 +709,12 @@ export default function BookSearchBar() {
               <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p className="text-lg font-medium">No books found</p>
               <p className="text-sm mt-1">
-                Try different keywords or check for typos. Our smart search
-                handles most spelling variations!
                 {isComboQuery(searchTerm) && (
                   <>
                     <br />
                     <span className="text-purple-600">
-                      Looking for sets/series? Try broader terms.
+                      Looking for sets/series? Try: &quot;harry potter
+                      set&quot;, &quot;series&quot;, or author names.
                     </span>
                   </>
                 )}
