@@ -9,15 +9,6 @@ export default function ProductLoadingSkeleton() {
       <Header />
 
       {/* Search Section */}
-      <section className="container mx-auto px-4 lg:px-6 py-6">
-        <div className="relative max-w-2xl mx-auto">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          <Input
-            className="pl-12 pr-4 bg-white border-gray-200 rounded-full h-14 text-lg shadow-sm focus:shadow-md transition-shadow"
-            placeholder="Search by Title, Author, or ISBN..."
-          />
-        </div>
-      </section>
 
       <div className="max-w-6xl mx-auto px-10 bg-white">
         {/* Breadcrumb Skeleton */}
