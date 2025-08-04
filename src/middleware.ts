@@ -7,12 +7,12 @@ export function middleware(request: NextRequest) {
 
   if (decodedPath === "/shop-2") {
     const redirectUrl = new URL(`/${search}`, origin);
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect("/");
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/:path*"], // Match everything so you can decode and check
+  matcher: ["/shop-2"], // Match everything so you can decode and check
 };
