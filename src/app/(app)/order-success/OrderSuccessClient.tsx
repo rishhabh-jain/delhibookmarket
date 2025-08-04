@@ -137,7 +137,7 @@ export default function Component() {
           email: orderData.billing.email,
           delivery_country: "IN",
           estimated_delivery_date: getEstimatedDeliveryDate(),
-          opt_in_style: "BOTTOM_LEFT_DIALOG",
+          opt_in_style: "CENTER_DIALOG",
         });
 
         window.gapi.surveyoptin.render({
@@ -146,7 +146,7 @@ export default function Component() {
           email: orderData.billing.email,
           delivery_country: "IN",
           estimated_delivery_date: getEstimatedDeliveryDate(),
-          opt_in_style: "BOTTOM_LEFT_DIALOG", // Added style option
+          opt_in_style: "CENTER_DIALOG", // Added style option
         });
       });
     };
