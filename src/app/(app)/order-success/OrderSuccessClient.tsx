@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import Script from "next/script";
 import { useState, useEffect } from "react";
 interface OrderData {
   id: number;
@@ -91,10 +90,10 @@ export default function Component() {
   useEffect(() => {
     // Track conversion when page loads
     // You can pass a unique transaction ID here
-    if (order_id) {
-      trackConversion(order_id);
+    if (order_id && orderData) {
+      trackConversion(order_id, Number(orderData?.total));
     }
-  }, [order_id]);
+  }, [order_id, orderData]);
 
   if (loading) {
     return (

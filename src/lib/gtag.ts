@@ -50,11 +50,13 @@ export const event = ({
   }
 };
 
-export const trackConversion = (transactionId?: string) => {
+export const trackConversion = (transactionId?: string, value?: number) => {
   if (typeof window !== "undefined" && window.gtag) {
     window.gtag("event", "conversion", {
       send_to: "AW-623851782/4HOmCJXn3ugYEIbyvKkC",
       transaction_id: transactionId || "",
+      value: value || 0,
+      currency: "INR", // Change to your currency
     });
   }
 };
