@@ -1,5 +1,6 @@
 "use client";
 
+import { trackConversion } from "@/lib/gtag";
 import {
   CheckCircle,
   Mail,
@@ -87,32 +88,13 @@ export default function Component() {
       setLoading(false);
     }
   };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "processing":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+  useEffect(() => {
+    // Track conversion when page loads
+    // You can pass a unique transaction ID here
+    if (order_id) {
+      trackConversion(order_id);
     }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-        return "Order Completed";
-      case "processing":
-        return "Order Processing";
-      case "pending":
-        return "Order Pending";
-      default:
-        return "Order Received";
-    }
-  };
+  }, [order_id]);
 
   if (loading) {
     return (
@@ -138,14 +120,15 @@ export default function Component() {
 
   return (
     <>
-      <Script id="google-ads-conversion" strategy="afterInteractive">
+      {/* <Script id="google-ads-conversion" strategy="afterInteractive">
+        console.log(&quot;TRIGGERED&quot;)
         {`
           gtag('event', 'conversion', {
             'send_to': 'AW-623851782/4HOmCJXn3ugYEIbyvKkC',
             'transaction_id': '${order_id}'
           });
         `}
-      </Script>
+      </Script> */}
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
         {/* Header */}
 

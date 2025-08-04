@@ -8,7 +8,8 @@ async function fetchInitialProducts(category: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = await fetch(
-      `${baseUrl}/api/get-products-by-category?c=${category}&page=1&limit=20`
+      `${baseUrl}/api/get-products-by-category?c=${category}&page=1&limit=20`,
+      { next: { revalidate: 86400 } } // this is the magic that triggers ISR
     );
 
     if (!response.ok) {
