@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
@@ -32,7 +33,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useCart } from "@/context/CartContext";
+import { useCart, WooProduct } from "@/context/CartContext";
 import axios from "axios";
 import { Controller, useForm } from "react-hook-form";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -44,6 +45,12 @@ import { checkoutSchema } from "@/Schemma/CheckOutSchemma";
 import z, { set } from "zod";
 import { useAlert } from "@/context/AlertContext";
 import CustomerLoveSection from "@/components/CustomerloveSection";
+import {
+  FREE_BAG,
+  FREE_DIARY,
+  FREEBOTTLE_PRODUCT,
+  getCoupon,
+} from "@/app/data/PROMOCODES";
 
 // Mock useCart hook - replace with your actual implementation
 
@@ -126,8 +133,16 @@ const indianStates = [
 ];
 
 export default function CheckoutPage() {
-  const { items, total, clearCart, updateQuantity, removeItem, canAddToCart } =
-    useCart();
+  const {
+    items,
+    total,
+    clearCart,
+    updateQuantity,
+    removeItem,
+    canAddToCart,
+    addWooProduct,
+    removeFreeItems,
+  } = useCart();
   const { showToast } = useAlert();
 
   const router = useRouter();
@@ -144,6 +159,11 @@ export default function CheckoutPage() {
   const [isCheckingStock, setIsCheckingStock] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [appliedCouponProduct, setAppliedCouponProduct] =
+    useState<WooProduct | null>(null);
+
+  const [couponInput, setCouponInput] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -161,7 +181,8 @@ export default function CheckoutPage() {
   const emailValue = watch("email"); // this will give you the current value of 'email'
   const shippingCost = 39;
   const COD_CHARGES = paymentMethod === "cod" ? 50 : 0;
-  const finalTotal = total + shippingCost + COD_CHARGES;
+  const COUPON_DISCOUNT = appliedCoupon ? Number(appliedCoupon.amount) : 0;
+  const finalTotal = total + shippingCost + COD_CHARGES - COUPON_DISCOUNT;
   const debouncedSearchTerm = useDebounce(emailValue, 1000);
 
   const isValidEmail = (email: string) => {
@@ -439,6 +460,86 @@ export default function CheckoutPage() {
     }
   };
 
+  const applyCoupon = async (couponCode: string) => {
+    const coupon = getCoupon(couponCode.toLowerCase());
+
+    if (!coupon) {
+      showToast({
+        variant: "warning",
+        message: "Invalid coupon code.",
+      });
+      return;
+    }
+
+    const couponAmount = Number(coupon.amount);
+
+    const minimumAmount = Number(coupon.minimum_amount);
+
+    if (finalTotal < minimumAmount) {
+      showToast({
+        variant: "warning",
+        message: `Minimum order amount for this coupon is ₹${minimumAmount}`,
+      });
+      return;
+    }
+
+    if (coupon.code === "freebottle") {
+      if (appliedCoupon) {
+        showToast({
+          variant: "warning",
+          message: "You have already applied a coupon.",
+        });
+        return;
+      }
+      addWooProduct(FREEBOTTLE_PRODUCT, 1);
+      setAppliedCoupon(coupon);
+      setAppliedCouponProduct(FREEBOTTLE_PRODUCT);
+      showToast({
+        variant: "success",
+        message: "Free bottle has been added to your cart.",
+      });
+      return;
+    }
+
+    if (coupon.code === "freediary") {
+      if (appliedCoupon) {
+        showToast({
+          variant: "warning",
+          message: "You have already applied a coupon.",
+        });
+        return;
+      }
+      addWooProduct(FREE_DIARY, 1);
+      setAppliedCouponProduct(FREE_DIARY);
+      setAppliedCoupon(coupon);
+      showToast({
+        variant: "success",
+        message: "Free diary has been added to your cart.",
+      });
+      return;
+    }
+
+    if (coupon.code === "freebag") {
+      if (appliedCoupon) {
+        showToast({
+          variant: "warning",
+          message: "You have already applied a coupon.",
+        });
+        return;
+      }
+      addWooProduct(FREE_BAG, 1);
+      setAppliedCouponProduct(FREE_BAG);
+      setAppliedCoupon(coupon);
+      showToast({
+        variant: "success",
+        message: "Free bag has been added to your cart.",
+      });
+      return;
+    }
+
+    setAppliedCoupon(coupon);
+  };
+
   // const handleTestForm = () => {
   //   reset({
   //     email: "tester28@gmail.com",
@@ -544,12 +645,16 @@ export default function CheckoutPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 hover:bg-gray-100"
-                                onClick={() =>
+                                onClick={() => {
+                                  setAppliedCoupon(null);
+                                  if (appliedCouponProduct) {
+                                    removeItem(appliedCouponProduct.id);
+                                  }
                                   updateQuantity(
                                     item.id,
                                     Math.max(1, item.quantity - 1)
-                                  )
-                                }
+                                  );
+                                }}
                                 disabled={item.quantity <= 1}
                               >
                                 <Minus className="w-3 h-3" />
@@ -561,9 +666,13 @@ export default function CheckoutPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 hover:bg-gray-100"
-                                onClick={() =>
-                                  updateQuantity(item.id, item.quantity + 1)
-                                }
+                                onClick={() => {
+                                  setAppliedCoupon(null);
+                                  if (appliedCouponProduct) {
+                                    removeItem(appliedCouponProduct.id);
+                                  }
+                                  updateQuantity(item.id, item.quantity + 1);
+                                }}
                                 disabled={!canAddToCart(item.id, 1)}
                               >
                                 <Plus className="w-3 h-3" />
@@ -583,6 +692,10 @@ export default function CheckoutPage() {
                                       "Checkout must have atleast 1 item",
                                   });
                                   return;
+                                }
+                                setAppliedCoupon(null);
+                                if (appliedCouponProduct) {
+                                  removeItem(appliedCouponProduct.id);
                                 }
                                 removeItem(item.id);
                               }}
@@ -948,6 +1061,37 @@ export default function CheckoutPage() {
                     reviews service) with a review form.
                   </Label>
                 </div>
+              </div>
+
+              {/* Coupon Code */}
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Coupon Code
+                </h2>
+                <div className="flex items-center space-x-3">
+                  <Input
+                    placeholder="Enter coupon code"
+                    className="flex-1 h-12"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    className="h-12"
+                    onClick={(e) => {
+                      e.preventDefault(); // 👈 stops the form submission
+
+                      applyCoupon(couponInput);
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </div>
+                {appliedCoupon && (
+                  <div className="mt-2 text-sm text-green-700 bg-green-50 p-3 rounded-md">
+                    Coupon applied: {appliedCoupon.code.toUpperCase()}
+                  </div>
+                )}
               </div>
 
               {/* Place Order Button */}

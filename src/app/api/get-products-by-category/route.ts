@@ -81,14 +81,23 @@ export async function GET(request: NextRequest) {
     const nextPage = hasNextPage ? page + 1 : undefined;
 
     // Return response in the expected format
-    return NextResponse.json({
-      products: res.data,
-      hasNextPage,
-      nextPage,
-      totalCount,
-      currentPage: page,
-      totalPages,
-    });
+    return new NextResponse(
+      JSON.stringify({
+        products: res.data,
+        hasNextPage,
+        nextPage,
+        totalCount,
+        currentPage: page,
+        totalPages,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "s-maxage=86400, stale-while-revalidate=59",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching products:", error);
 

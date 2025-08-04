@@ -1,9 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useReducer, ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  ReactNode,
+  useEffect,
+} from "react";
 
 // WooCommerce Product Interface
-interface WooProduct {
+export interface WooProduct {
   id: number;
   name: string;
   permalink: string;
@@ -33,17 +40,7 @@ interface WooProduct {
   average_rating: string;
   rating_count: number;
   stock_status: "instock" | "outofstock" | "onbackorder";
-  _links: {
-    self: {
-      href: string;
-      targetHints: {
-        allow: ("GET" | "POST" | "PUT" | "PATCH" | "DELETE")[];
-      };
-    }[];
-    collection: {
-      href: string;
-    }[];
-  };
+  isPromotional?: boolean; // Optional field for promotional items
 }
 
 // Cart Item Interface
@@ -58,6 +55,7 @@ export interface CartItem {
   stock_quantity: number;
   stock_status: "instock" | "outofstock" | "onbackorder";
   permalink: string;
+  isPromotional?: boolean; // Optional field for promotional items
 }
 
 interface CartState {
@@ -91,6 +89,7 @@ interface CartContextType extends CartState {
   openSidecart: () => void; // Added sidecart methods
   closeSidecart: () => void;
   toggleSidecart: () => void;
+  removeFreeItems: () => void; // Method to remove promotional items
 }
 
 // Local storage key
@@ -157,6 +156,7 @@ const wooProductToCartItem = (
     stock_quantity: product.stock_quantity,
     stock_status: product.stock_status,
     permalink: product.permalink,
+    isPromotional: product.isPromotional || false, // Use promotional flag if available
   };
 };
 
@@ -322,6 +322,19 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     dispatch({ type: "ADD_ITEM", payload: { ...cartItem, quantity } });
   };
 
+  const removeFreeItems = () => {
+    console.log("Trigerred");
+
+    console.log(state.items);
+    // Remove items with price 0 or items marked as promotional
+    const promotionalItem = state.items.find((item) => item.isPromotional);
+    if (promotionalItem) {
+      console.log("Removing promotional item:", promotionalItem.name);
+      removeItem(promotionalItem.id);
+      return;
+    }
+  };
+
   const removeItem = (id: number) => {
     dispatch({ type: "REMOVE_ITEM", payload: { id } });
   };
@@ -374,6 +387,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     openSidecart,
     closeSidecart,
     toggleSidecart,
+    removeFreeItems, // Expose the method to remove free items
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -382,8 +396,29 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 // Custom hook to use cart context
 export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
+  const pathname = usePathname();
+
   if (context === undefined) {
     throw new Error("useCart must be used within a CartProvider");
   }
+
+  const { items, removeItem } = context;
+
+  useEffect(() => {
+    // If user navigates away from checkout, remove free items
+    if (pathname !== "/checkout") {
+      removeFreeItems();
+    }
+  }, [pathname, context, items]);
+
+  const removeFreeItems = () => {
+    // Remove items with price 0 or items marked as promotional
+    const promotionalItem = items.find((item) => item.isPromotional);
+    if (promotionalItem) {
+      console.log("Removing promotional item:", promotionalItem.name);
+      removeItem(promotionalItem.id);
+      return;
+    }
+  };
   return context;
 };
