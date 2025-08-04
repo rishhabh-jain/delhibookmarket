@@ -18,6 +18,53 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   async redirects() {
     return [
+      {
+        source: "/cart-2",
+        destination: "https://shop.delhibookmarket.com/cart-2",
+        permanent: false,
+      },
+      {
+        source: "/checkout-2",
+        destination: "https://shop.delhibookmarket.com/checkout-2",
+        permanent: false,
+      },
+      {
+        source: "/bulk-order-dropshipping",
+        destination: "https://shop.delhibookmarket.com/bulk-order-dropshipping",
+        permanent: false,
+      },
+      {
+        source: "/my-account-2",
+        destination: "https://shop.delhibookmarket.com/my-account-2",
+        permanent: false,
+      },
+      {
+        source: "/faqs",
+        destination: "https://shop.delhibookmarket.com/faqs",
+        permanent: false,
+      },
+      {
+        source: "/wp-cron.php",
+        destination: "https://shop.delhibookmarket.com/wp-cron.php",
+        permanent: false,
+      },
+      // Handle these paths with query parameters as well
+      {
+        source: "/cart-2/:path*",
+        destination: "https://shop.delhibookmarket.com/cart-2/:path*",
+        permanent: false,
+      },
+      {
+        source: "/checkout-2/:path*",
+        destination: "https://shop.delhibookmarket.com/checkout-2/:path*",
+        permanent: false,
+      },
+      {
+        source: "/my-account-2/:path*",
+        destination: "https://shop.delhibookmarket.com/my-account-2/:path*",
+        permanent: false,
+      },
+
       // Redirect malformed shop URLs to home (more specific patterns first)
       {
         source: "/shop-2%3Fmin_price=:path*",
