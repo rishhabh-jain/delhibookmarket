@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: "/contact",
+        destination: "https://shop.delhibookmarket.com/contact",
+        permanent: false,
+      },
+      {
         source: "/vendor-registration-3",
         destination: "https://shop.delhibookmarket.com/vendor-registration-3",
         permanent: false,
