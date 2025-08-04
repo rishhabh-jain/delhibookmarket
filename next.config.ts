@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: "/apple-touch-icon-120x120.png",
+        destination: "https://shop.delhibookmarket.com/cart-2",
+        permanent: false,
+      },
+      {
         source: "/checkout-2",
         destination: "https://shop.delhibookmarket.com/checkout-2",
         permanent: false,
