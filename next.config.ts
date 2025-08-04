@@ -24,8 +24,24 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: "/wp-login.php",
+        destination: "https://shop.delhibookmarket.com/wp-login.php",
+        permanent: false,
+      },
+      {
+        source: "/xmlrpc.php",
+        destination: "https://shop.delhibookmarket.com/xmlrpc.php",
+        permanent: false,
+      },
+      {
+        source: "/vendor-registration-3",
+        destination: "https://shop.delhibookmarket.com/vendor-registration-3",
+        permanent: false,
+      },
+      {
         source: "/apple-touch-icon-120x120.png",
-        destination: "https://shop.delhibookmarket.com/cart-2",
+        destination:
+          "https://shop.delhibookmarket.com/apple-touch-icon-120x120.png",
         permanent: false,
       },
       {
