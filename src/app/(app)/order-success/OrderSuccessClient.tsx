@@ -55,6 +55,17 @@ interface OrderData {
   shipping_total: string;
 }
 
+// Extend the Window interface to include ___gcfg and renderOptIn
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ___gcfg?: any;
+    renderOptIn?: () => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gapi?: any;
+  }
+}
+
 export default function Component() {
   // Mock order_id for demo - in real app this would come from useSearchParams
   const order_id = useSearchParams().get("order_id");
@@ -95,6 +106,71 @@ export default function Component() {
     }
   }, [order_id, orderData]);
 
+  useEffect(() => {
+    // Only run when we have orderData
+    if (!orderData?.id || !orderData?.billing?.email) {
+      console.log("Waiting for order data...", { orderData });
+      return;
+    }
+
+    console.log("Order data available, loading Google Survey script...");
+
+    const getEstimatedDeliveryDate = () => {
+      const today = new Date();
+      today.setDate(today.getDate() + 10);
+      return today.toISOString().split("T")[0];
+    };
+
+    // Set up Google language configuration
+    window.___gcfg = {
+      lang: "en_US",
+    };
+
+    // Define global callback function FIRST (exactly like Google's example)
+    window.renderOptIn = function () {
+      console.log("renderOptIn called with orderData:", orderData);
+
+      window.gapi.load("surveyoptin", function () {
+        console.log("surveyoptin loaded, rendering with data:", {
+          merchant_id: 5083721488,
+          order_id: orderData.id.toString(), // Convert to string like in example
+          email: orderData.billing.email,
+          delivery_country: "IN",
+          estimated_delivery_date: getEstimatedDeliveryDate(),
+          opt_in_style: "BOTTOM_LEFT_DIALOG",
+        });
+
+        window.gapi.surveyoptin.render({
+          merchant_id: 5083721488,
+          order_id: orderData.id.toString(), // Google expects string
+          email: orderData.billing.email,
+          delivery_country: "IN",
+          estimated_delivery_date: getEstimatedDeliveryDate(),
+          opt_in_style: "BOTTOM_LEFT_DIALOG", // Added style option
+        });
+      });
+    };
+
+    // Create script exactly like Google's example
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/platform.js?onload=renderOptIn";
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => console.log("Google API script loaded successfully");
+    script.onerror = () => console.error("Failed to load Google API script");
+
+    document.body.appendChild(script);
+
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+      delete window.renderOptIn;
+      delete window.___gcfg;
+    };
+  }, [orderData]); // This will re-run when orderData changes
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center">
@@ -128,6 +204,7 @@ export default function Component() {
           });
         `}
       </Script> */}
+
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
         {/* Header */}
 
