@@ -1,6 +1,9 @@
 import React from "react";
 import ProductCategoryClient from "./ProductCategoryClient";
 
+// ISR: Revalidate every 24 hours (86400 seconds)
+export const revalidate = 86400;
+
 async function fetchInitialProducts(category: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
