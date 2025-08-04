@@ -18,7 +18,7 @@ async function generateSitemap() {
       (p: { permalink: string }) => `
     <url>
       <loc>${siteUrl}/${p.permalink.split("/").filter(Boolean).pop()}</loc>
-      <lastmod>${new Date()}</lastmod>
+      <lastmod>${new Date().toISOString()}</lastmod>
     </url>`
     )
     .join("");
