@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const url = request.nextUrl;
+  const { origin, search } = request.nextUrl;
+  const decodedPath = decodeURIComponent(request.nextUrl.pathname);
 
-  if (url.pathname === "/shop-2") {
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+  if (decodedPath === "/shop-2") {
+    const redirectUrl = new URL(`/${search}`, origin);
+    return NextResponse.redirect(redirectUrl);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/shop-2", ""],
+  matcher: ["/:path*"], // Match everything so you can decode and check
 };
