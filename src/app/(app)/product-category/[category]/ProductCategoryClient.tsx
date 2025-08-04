@@ -44,6 +44,8 @@ interface ProductsResponse {
   hasNextPage: boolean;
   nextPage?: number;
   totalCount: number;
+  currentPage: number;
+  totalPages: number;
 }
 
 async function fetchProducts(
@@ -73,9 +75,11 @@ async function fetchProducts(
 export default function ProductCategoryClient({
   initialProducts,
   category,
+  categoryName,
 }: {
-  initialProducts: Product[];
+  initialProducts: ProductsResponse;
   category: string;
+  categoryName: string;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
@@ -95,6 +99,7 @@ export default function ProductCategoryClient({
     rootMargin: "100px",
   });
 
+  // Updated useInfiniteQuery with better initialData logic
   const {
     data,
     fetchNextPage,
@@ -105,28 +110,21 @@ export default function ProductCategoryClient({
     error,
     refetch,
   } = useInfiniteQuery({
+    initialPageParam: 1,
     queryKey: ["products", category, debouncedSearchTerm, sortBy],
-    // @ts-expect-error - ProductsResponse nextPage type mismatch
     queryFn: ({ pageParam = 1 }) =>
       fetchProducts(category, pageParam, 20, debouncedSearchTerm, sortBy),
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? (lastPage.nextPage as number) : undefined,
     initialData:
-      initialProducts.length > 0
+      initialProducts.products.length > 0
         ? {
-            pages: [
-              {
-                products: initialProducts,
-                hasNextPage: initialProducts.length === 20,
-                nextPage: 2,
-                totalCount: initialProducts.length,
-              },
-            ],
+            pages: [initialProducts], // Pass the entire response object
             pageParams: [1],
           }
         : undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   console.log(data);
@@ -181,7 +179,7 @@ export default function ProductCategoryClient({
         {/* Header Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 capitalize">
-            {category} Books
+            {categoryName} Books
           </h1>
         </div>
 

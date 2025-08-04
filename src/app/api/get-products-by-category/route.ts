@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const categoryId = searchParams.get("c");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = parseInt(searchParams.get("limit") || "20"); // Changed from 9 to 20
     const search = searchParams.get("search") || "";
     const sort = searchParams.get("sort") || "name";
 
@@ -75,12 +75,9 @@ export async function GET(request: NextRequest) {
     // Get total count from headers
     const totalCount = parseInt(res.headers["x-wp-total"] || "0");
     const totalPages = parseInt(res.headers["x-wp-totalpages"] || "1");
-
-    // Determine if there's a next page
     const hasNextPage = page < totalPages;
     const nextPage = hasNextPage ? page + 1 : undefined;
 
-    // Return response in the expected format
     return new NextResponse(
       JSON.stringify({
         products: res.data,
@@ -93,15 +90,14 @@ export async function GET(request: NextRequest) {
       {
         status: 200,
         headers: {
-          "Content-Type": "application/json",
           "Cache-Control": "s-maxage=86400, stale-while-revalidate=59",
+          "Content-Type": "application/json",
         },
       }
     );
   } catch (error) {
     console.error("Error fetching products:", error);
 
-    // Handle specific axios errors
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
       const message =

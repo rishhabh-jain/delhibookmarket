@@ -9,19 +9,33 @@ async function fetchInitialProducts(category: string) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = await fetch(
       `${baseUrl}/api/get-products-by-category?c=${category}&page=1&limit=20`,
-      { next: { revalidate: 86400 } } // this is the magic that triggers ISR
+      { next: { revalidate: 86400 } }
     );
 
     if (!response.ok) {
       console.error(`Failed to fetch products: ${response.status}`);
-      return { products: [] };
+      return {
+        products: [],
+        hasNextPage: false,
+        nextPage: undefined,
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 1,
+      };
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
     console.error("Error fetching initial products:", error);
-    return { products: [] };
+    return {
+      products: [],
+      hasNextPage: false,
+      nextPage: undefined,
+      totalCount: 0,
+      currentPage: 1,
+      totalPages: 1,
+    };
   }
 }
 
@@ -66,23 +80,24 @@ export default async function CategoryPage({
   const categoryId =
     categoryObject[category.toLowerCase() as keyof typeof categoryObject];
 
-  if (!category) {
+  if (!categoryId) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-red-600">
-          Product Category is required
+          Invalid category: {category}
         </h1>
       </div>
     );
   }
 
   // Fetch initial products for SSR
-  const { products } = await fetchInitialProducts(String(categoryId));
+  const initialProductsData = await fetchInitialProducts(String(categoryId));
 
   return (
     <ProductCategoryClient
-      initialProducts={products || []}
-      category={category}
+      initialProducts={initialProductsData} // Pass the full response object
+      category={String(categoryId)} // Pass the categoryId, not the category name
+      categoryName={category}
     />
   );
 }
