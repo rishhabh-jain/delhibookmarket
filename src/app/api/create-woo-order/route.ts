@@ -20,13 +20,15 @@ export async function POST(request: NextRequest) {
       shipping,
       line_items,
       fee_lines,
+      coupon_lines,
+      is_shipping_free = false,
     } = await request.json();
 
     const shipping_lines = [
       {
         method_id: "flat_rate",
         method_title: "Flat Rate",
-        total: "39.00",
+        total: is_shipping_free ? "0" : "39",
       },
     ];
 
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
       line_items,
       fee_lines,
       shipping_lines,
+      coupon_lines,
     };
     console.log("ORDER DATA \n");
     console.log(orderData);

@@ -323,7 +323,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const removeFreeItems = () => {
-    console.log("Trigerred");
+    console.log("Trigerred Manually on mount");
 
     console.log(state.items);
     // Remove items with price 0 or items marked as promotional

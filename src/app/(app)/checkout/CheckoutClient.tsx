@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -42,7 +42,7 @@ import { useRouter } from "next/navigation";
 import BookLoadingModal from "@/components/loading/CheckoutLoading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { checkoutSchema } from "@/Schemma/CheckOutSchemma";
-import z, { set } from "zod";
+import z from "zod";
 import { useAlert } from "@/context/AlertContext";
 import CustomerLoveSection from "@/components/CustomerloveSection";
 import {
@@ -51,6 +51,7 @@ import {
   FREEBOTTLE_PRODUCT,
   getCoupon,
 } from "@/app/data/PROMOCODES";
+import CheckoutCoupons from "@/components/ShowCoupon";
 
 // Mock useCart hook - replace with your actual implementation
 
@@ -141,7 +142,6 @@ export default function CheckoutPage() {
     removeItem,
     canAddToCart,
     addWooProduct,
-    removeFreeItems,
   } = useCart();
   const { showToast } = useAlert();
 
@@ -154,9 +154,9 @@ export default function CheckoutPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [user, setUser] = useState<any>(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [isFormPopulated, setIsFormPopulated] = useState(false);
+  const [, setIsFormPopulated] = useState(false);
   const [outOfStockList, setOutOfStockList] = useState<StockIssueItem[]>([]);
-  const [isCheckingStock, setIsCheckingStock] = useState(false);
+  const [, setIsCheckingStock] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
@@ -179,7 +179,7 @@ export default function CheckoutPage() {
   });
 
   const emailValue = watch("email"); // this will give you the current value of 'email'
-  const shippingCost = 39;
+  const shippingCost = appliedCoupon?.code === "freeshipping" ? 0 : 39;
   const COD_CHARGES = paymentMethod === "cod" ? 50 : 0;
   const COUPON_DISCOUNT = appliedCoupon ? Number(appliedCoupon.amount) : 0;
   const finalTotal = total + shippingCost + COD_CHARGES - COUPON_DISCOUNT;
@@ -364,6 +364,8 @@ export default function CheckoutPage() {
         quantity: item.quantity,
       }));
 
+      const IS_SHIPPING_FREE = appliedCoupon?.code === "freeshipping";
+
       const FEE_LINES = [
         {
           name: "COD Charges",
@@ -371,6 +373,14 @@ export default function CheckoutPage() {
           tax_status: "none",
         },
       ];
+
+      const COUPON_LINES = appliedCoupon
+        ? [
+            {
+              code: appliedCoupon.code,
+            },
+          ]
+        : [];
 
       // 1️⃣ Create WooCommerce order
       const wooRes = await axios.post("/api/create-woo-order", {
@@ -381,6 +391,8 @@ export default function CheckoutPage() {
         shipping: SHIPPING,
         line_items: LINE_ITEMS,
         fee_lines: PAYMENT_METHOD === "cod" ? FEE_LINES : [],
+        coupon_lines: COUPON_LINES,
+        is_shipping_free: IS_SHIPPING_FREE,
       });
 
       const wooOrderData = wooRes.data.data;
@@ -471,6 +483,14 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (appliedCoupon) {
+      showToast({
+        variant: "warning",
+        message: "You have already applied a coupon.",
+      });
+      return;
+    }
+
     const couponAmount = Number(coupon.amount);
 
     const minimumAmount = Number(coupon.minimum_amount);
@@ -484,13 +504,6 @@ export default function CheckoutPage() {
     }
 
     if (coupon.code === "freebottle") {
-      if (appliedCoupon) {
-        showToast({
-          variant: "warning",
-          message: "You have already applied a coupon.",
-        });
-        return;
-      }
       addWooProduct(FREEBOTTLE_PRODUCT, 1);
       setAppliedCoupon(coupon);
       setAppliedCouponProduct(FREEBOTTLE_PRODUCT);
@@ -502,13 +515,6 @@ export default function CheckoutPage() {
     }
 
     if (coupon.code === "freediary") {
-      if (appliedCoupon) {
-        showToast({
-          variant: "warning",
-          message: "You have already applied a coupon.",
-        });
-        return;
-      }
       addWooProduct(FREE_DIARY, 1);
       setAppliedCouponProduct(FREE_DIARY);
       setAppliedCoupon(coupon);
@@ -520,13 +526,6 @@ export default function CheckoutPage() {
     }
 
     if (coupon.code === "freebag") {
-      if (appliedCoupon) {
-        showToast({
-          variant: "warning",
-          message: "You have already applied a coupon.",
-        });
-        return;
-      }
       addWooProduct(FREE_BAG, 1);
       setAppliedCouponProduct(FREE_BAG);
       setAppliedCoupon(coupon);
@@ -537,6 +536,27 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (coupon.code === "freeshipping") {
+      setAppliedCoupon(coupon);
+      showToast({
+        variant: "success",
+        message: "Free shipping applied successfully!",
+      });
+      return;
+    }
+
+    if (coupon.code == "summersale") {
+      //DO 10 PERCENT DISCOUNT OF TOTAL PRICE
+      const discountAmount = Math.round((finalTotal * 10) / 100);
+      setAppliedCoupon({ ...coupon, amount: discountAmount });
+      return;
+    }
+    showToast({
+      variant: "success",
+      message: `Coupon applied successfully! You saved ₹${couponAmount.toFixed(
+        2
+      )}`,
+    });
     setAppliedCoupon(coupon);
   };
 
@@ -569,6 +589,22 @@ export default function CheckoutPage() {
       handleUserRegistration();
     }
   }, [createAccount]);
+
+  const isInitialProcessed = useRef(false);
+
+  useEffect(() => {
+    if (!isInitialProcessed.current && items.length > 0) {
+      console.log("Triggered on first valid items hydration");
+
+      const promotionalItem = items.find((item) => item.isPromotional);
+      if (promotionalItem) {
+        console.log("Removing promotional item:", promotionalItem.name);
+        removeItem(promotionalItem.id);
+      }
+
+      isInitialProcessed.current = true; // Run only once!
+    }
+  }, [items]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -738,6 +774,17 @@ export default function CheckoutPage() {
                             <span>₹ {50}</span>
                           </div>
                         )}
+                        {appliedCoupon && (
+                          <div className="">
+                            <div className="flex justify-between text-green-700">
+                              <span>Coupon Applied</span>
+                              <span>- ₹ {COUPON_DISCOUNT.toFixed(2)}</span>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {appliedCoupon.description}
+                            </p>
+                          </div>
+                        )}
                         <div className="flex justify-between font-semibold text-lg border-t pt-2">
                           <span>Total</span>
                           <span>₹ {finalTotal.toFixed(2)}</span>
@@ -750,17 +797,6 @@ export default function CheckoutPage() {
             </CollapsibleContent>
           </Collapsible>
         </div>
-
-        {/* {process.env.NODE_ENV == "development" && (
-          <>
-            <button
-              className="p-4 border rounded-xl my-4 w-full"
-              onClick={handleTestForm}
-            >
-              Fill the form
-            </button>
-          </>
-        )} */}
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Main Form */}
@@ -1072,7 +1108,7 @@ export default function CheckoutPage() {
                   <Input
                     placeholder="Enter coupon code"
                     className="flex-1 h-12"
-                    value={couponInput}
+                    value={couponInput.toUpperCase()}
                     onChange={(e) => setCouponInput(e.target.value)}
                   />
                   <Button
@@ -1088,10 +1124,29 @@ export default function CheckoutPage() {
                   </Button>
                 </div>
                 {appliedCoupon && (
-                  <div className="mt-2 text-sm text-green-700 bg-green-50 p-3 rounded-md">
+                  <div className="mt-2 text-sm text-green-700 bg-green-50 p-3 rounded-md flex justify-between">
                     Coupon applied: {appliedCoupon.code.toUpperCase()}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (appliedCoupon && appliedCouponProduct) {
+                          removeItem(appliedCouponProduct.id);
+                        }
+                        showToast({
+                          variant: "info",
+                          message: `Coupon ${appliedCoupon.code.toUpperCase()} removed`,
+                        });
+                        setAppliedCoupon(null);
+                        setAppliedCouponProduct(null);
+                        setCouponInput("");
+                      }}
+                    >
+                      <X />
+                      {""}
+                    </button>
                   </div>
                 )}
+                <CheckoutCoupons />
               </div>
 
               {/* Place Order Button */}
@@ -1108,7 +1163,9 @@ export default function CheckoutPage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Order Summary</span>
-                  <span className="text-2xl font-bold">₹ {finalTotal}.00</span>
+                  <span className="text-2xl font-bold">
+                    ₹ {finalTotal.toFixed(2)}
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1122,36 +1179,129 @@ export default function CheckoutPage() {
                         height={60}
                         className="rounded border"
                       />
-                      <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {item.quantity}
-                      </span>
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{item.name}</p>
+                      <p className="font-medium text-sm mb-1">{item.name}</p>
+                      <p className="text-sm text-gray-600">
+                        ₹ {item.price.toFixed(2)}
+                      </p>
+
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center border rounded">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                            onClick={() => {
+                              setAppliedCoupon(null);
+                              if (appliedCouponProduct) {
+                                removeItem(appliedCouponProduct.id);
+                              }
+                              updateQuantity(
+                                item.id,
+                                Math.max(1, item.quantity - 1)
+                              );
+                            }}
+                            disabled={item.quantity <= 1}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="px-3 py-1 text-sm font-medium min-w-[2rem] text-center">
+                            {item.quantity}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                            onClick={() => {
+                              setAppliedCoupon(null);
+                              if (appliedCouponProduct) {
+                                removeItem(appliedCouponProduct.id);
+                              }
+                              updateQuantity(item.id, item.quantity + 1);
+                            }}
+                            disabled={!canAddToCart(item.id, 1)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+
+                        {/* Remove Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            if (items.length <= 1) {
+                              showToast({
+                                variant: "warning",
+                                message: "Checkout must have atleast 1 item",
+                              });
+                              return;
+                            }
+                            setAppliedCoupon(null);
+                            if (appliedCouponProduct) {
+                              removeItem(appliedCouponProduct.id);
+                            }
+                            removeItem(item.id);
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <p className="font-semibold">₹ {item.price}</p>
+
+                    {/* Item Total */}
+                    <div className="text-right">
+                      <p className="font-semibold">
+                        ₹ {(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 ))}
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>₹ {total}</span>
+
+                {/* Show message if cart is empty */}
+                {items.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Your cart is empty</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span>₹ {shippingCost}</span>
-                  </div>
-                  {paymentMethod === "cod" && (
+                )}
+
+                {items.length > 0 && (
+                  <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between">
-                      <span>COD charges</span>
-                      <span>₹ {50}</span>
+                      <span>Subtotal</span>
+                      <span>₹ {total.toFixed(2)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                    <span>Total</span>
-                    <span>₹ {finalTotal}</span>
+                    <div className="flex justify-between">
+                      <span>Shipping</span>
+                      <span>₹ {shippingCost.toFixed(2)}</span>
+                    </div>
+                    {paymentMethod === "cod" && (
+                      <div className="flex justify-between">
+                        <span>COD charges</span>
+                        <span>₹ {50}</span>
+                      </div>
+                    )}
+                    {appliedCoupon && (
+                      <div className="">
+                        <div className="flex justify-between text-green-700">
+                          <span>Coupon Applied</span>
+                          <span>- ₹ {COUPON_DISCOUNT.toFixed(2)}</span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {appliedCoupon.description}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                      <span>Total</span>
+                      <span>₹ {finalTotal.toFixed(2)}</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

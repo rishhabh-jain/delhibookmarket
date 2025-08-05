@@ -10,6 +10,7 @@ import {
   BoxIcon as Bottle,
   Percent,
   Tag,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,17 @@ const promoOffers = [
     textColor: "text-blue-800",
   },
   {
+    id: 7,
+    title: "Free Diary",
+    description: "Get a complimentary premium diary with your order",
+    code: "FREEDIARY",
+    minOrder: 499,
+    icon: BookOpen,
+    gradient: "from-indigo-400 to-purple-500",
+    bgPattern: "bg-indigo-50",
+    textColor: "text-indigo-800",
+  },
+  {
     id: 4,
     title: "Summer Sale",
     description: "10% off on all orders",
@@ -66,7 +78,7 @@ const promoOffers = [
   {
     id: 5,
     title: "Reader's Special",
-    description: "₹200 off + free shipping on prepaid orders",
+    description: "₹200 off on Orders above ₹1999",
     code: "READERS2K",
     minOrder: 1999,
     discount: "₹200 OFF",
@@ -74,6 +86,18 @@ const promoOffers = [
     gradient: "from-rose-400 to-red-500",
     bgPattern: "bg-rose-50",
     textColor: "text-rose-800",
+  },
+  {
+    id: 6, // also fixed the duplicate id!
+    title: "Reader's Special",
+    description: "₹300 off on Orders above ₹2999",
+    code: "READERS3K",
+    minOrder: 2999,
+    discount: "₹300 OFF", // also fixed this typo from "3200 OFF"
+    icon: Tag,
+    gradient: "from-pink-500 to-red-600",
+    bgPattern: "bg-pink-50",
+    textColor: "text-pink-800",
   },
 ];
 
