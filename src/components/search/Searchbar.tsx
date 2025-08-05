@@ -552,6 +552,13 @@ export default function BookSearchBar() {
     return "";
   };
 
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      router.push(`/s/${searchTerm.trim()}`);
+      setShowResults(false); // optional: hide suggestions
+    }
+  };
+
   return (
     <div className="relative w-full max-w-2xl my-2" ref={resultsRef}>
       {/* Search Input */}
@@ -566,10 +573,15 @@ export default function BookSearchBar() {
           placeholder="Search books, authors, sets, series... Try: 'ser', 'com', 'boxe', 'sett'"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSearch();
+            else handleKeyDown(e);
+          }}
           onFocus={() => filteredProducts.length > 0 && setShowResults(true)}
           className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-lg"
         />
+
+        {/* Search button with icon */}
 
         {searchTerm && (
           <button
@@ -580,6 +592,15 @@ export default function BookSearchBar() {
             {""}
           </button>
         )}
+        <button
+          onClick={handleSearch}
+          className="absolute inset-y-0 right-10 pr-3 flex items-center hover:text-blue-600"
+        >
+          <Search className="h-5 w-5 text-gray-500" />
+          {""}
+        </button>
+
+        {/* Clear button */}
       </div>
 
       {/* Smart Search Indicator */}
