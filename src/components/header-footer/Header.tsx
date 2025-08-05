@@ -258,7 +258,7 @@ export default function Header() {
         </div>
 
         {/* Promotional banner */}
-        {/* <Link href="/promo-code">
+        <Link href="/promo-code">
           <div className="bg-gradient-to-r from-red-600 via-red-500 to-red-600 py-2.5 text-white relative overflow-hidden">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative">
@@ -272,7 +272,7 @@ export default function Header() {
               </div>
             </div>
           </div>
-        </Link> */}
+        </Link>
       </header>
     </div>
   );

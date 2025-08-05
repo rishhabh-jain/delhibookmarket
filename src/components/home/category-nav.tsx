@@ -1,143 +1,76 @@
 import Link from "next/link";
+import {
+  CheckCircle,
+  Sparkles,
+  BookOpen,
+  User,
+  TrendingUp,
+  Crown,
+} from "lucide-react";
 
 const categories = [
   {
-    id: "all",
+    id: "best-selling",
     name: "Best selling",
-    icon: "check-circle",
-    color: "bg-black",
+    icon: CheckCircle,
+    color: "bg-gray-800",
   },
   {
-    id: "all",
+    id: "new-arrivals",
     name: "New arrivals",
-    icon: "new-badge",
-    color: "bg-orange-400",
+    icon: Sparkles,
+    color: "bg-orange-500",
   },
   {
     id: "box-sets",
     name: "Box sets",
-    icon: "books",
+    icon: BookOpen,
     color: "bg-blue-500",
   },
   {
     id: "fiction",
     name: "Fiction books",
-    icon: "person-walking",
+    icon: User,
     color: "bg-purple-500",
   },
   {
     id: "finance",
     name: "Finance",
-    icon: "chart",
-    color: "bg-yellow-500",
+    icon: TrendingUp,
+    color: "bg-green-500",
   },
   {
     id: "non-fiction",
     name: "Non Fiction",
-    icon: "crown",
-    color: "bg-amber-500",
+    icon: Crown,
+    color: "bg-yellow-500",
   },
 ];
 
 export default function CategoryNav() {
   return (
-    <div className="container px-4 py-2">
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            href={`/product-category/${category.id}`}
-            className="flex flex-col items-center justify-center p-2 border rounded-lg hover:bg-gray-50"
-          >
-            <div
-              className={`h-12 w-12 rounded-full ${category.color} flex items-center justify-center text-white mb-1`}
+    <div className="container px-4 py-3">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+        {categories.map((category) => {
+          const IconComponent = category.icon;
+
+          return (
+            <Link
+              key={category.id}
+              href={`/product-category/${category.id}`}
+              className="flex flex-col items-center p-2 hover:bg-gray-50 rounded-lg"
             >
-              {category.icon === "check-circle" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-              )}
-              {category.icon === "new-badge" && (
-                <span className="font-bold text-sm">NEW</span>
-              )}
-              {category.icon === "books" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                </svg>
-              )}
-              {category.icon === "person-walking" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="5" r="3"></circle>
-                  <line x1="12" y1="22" x2="12" y2="8"></line>
-                  <path d="M5 12h14"></path>
-                </svg>
-              )}
-              {category.icon === "chart" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-              )}
-              {category.icon === "crown" && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
-                </svg>
-              )}
-            </div>
-            <span className="text-xs text-center">{category.name}</span>
-          </Link>
-        ))}
+              <div
+                className={`h-10 w-10 rounded-full ${category.color} flex items-center justify-center text-white mb-1`}
+              >
+                <IconComponent size={18} />
+              </div>
+              <span className="text-xs text-gray-700 text-center">
+                {category.name}
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

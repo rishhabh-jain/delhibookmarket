@@ -25,8 +25,8 @@ export default function HomeClient() {
 
       {/* Flash Sale Banner */}
       <Link href="/product-category/self-help">
-        <section className="container mx-auto px-4 lg:px-6 my-2">
-          <Card className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-500 to-red-600 border-0 shadow-2xl">
+        <section className="container lg:px-6 mx-auto lg:my-4 ">
+          <div className="relative overflow-hidden bg-gradient-to-r lg:rounded-xl lg:py-12 from-red-600 via-red-500 to-red-600 border-0 shadow-2xl py-4">
             <CardContent className="px-6 py-4">
               <div className="flex items-center justify-between">
                 {/* Left side - Flash icon and text */}
@@ -83,7 +83,7 @@ export default function HomeClient() {
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-400/20 to-transparent rounded-full -translate-y-16 translate-x-16"></div>
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-red-700/30 to-transparent rounded-full translate-y-12 -translate-x-12"></div>
-          </Card>
+          </div>
         </section>
       </Link>
 
