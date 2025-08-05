@@ -10,13 +10,13 @@ import {
 
 const categories = [
   {
-    id: "best-selling",
+    id: "all",
     name: "Best selling",
     icon: CheckCircle,
     color: "bg-gray-800",
   },
   {
-    id: "new-arrivals",
+    id: "all",
     name: "New arrivals",
     icon: Sparkles,
     color: "bg-orange-500",
