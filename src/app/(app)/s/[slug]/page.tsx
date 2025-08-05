@@ -4,13 +4,14 @@ import Header from "@/components/header-footer/Header";
 import Footer from "@/components/home/Footer";
 
 type Props = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
-export default function SearchPage({ params }: Props) {
-  const decodedSlug = decodeURIComponent(params.slug);
+export default async function SearchPage({ params }: Props) {
+  const resolvedParams = await params;
+  const decodedSlug = decodeURIComponent(resolvedParams.slug);
 
   return (
     <>
