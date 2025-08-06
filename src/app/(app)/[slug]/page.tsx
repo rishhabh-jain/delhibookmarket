@@ -1,6 +1,17 @@
 import React from "react";
-import { Metadata } from "next";
 import ProductClient, { WooProduct } from "../product/[id]/productClient";
+import axios from "axios";
+
+export const revalidate = 864000; // 10 days in seconds
+export const dynamicParams = true;
+
+const api = axios.create({
+  baseURL: "https://shop.delhibookmarket.com/wp-json/wc/v3/",
+  auth: {
+    username: "ck_a40ec0ca8305b354802fb33d3d603cdda79086d6",
+    password: "cs_eafa40614a8fbf870f9fe3b48138053dee2e1174",
+  },
+});
 
 // Helper function to generate structured data
 function generateStructuredData(product: WooProduct) {
@@ -153,126 +164,28 @@ function generateKeywords(product: WooProduct): string {
 }
 
 async function fetchProduct(slug: string) {
+  let res;
+
   try {
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-      }/api/get-single-product?slug=${slug}`,
-      {
-        next: { revalidate: 604800 }, // 1 week in seconds
-      }
-    );
+    const slugRes = await api.get("products", {
+      params: {
+        slug,
+        _fields:
+          "id,name,permalink,price,regular_price,sale_price,description,short_description,images,stock_quantity,stock_status,categories,tags,attributes,average_rating,rating_count",
+      },
+    });
 
-    if (!response.ok) {
-      throw new Error("Product not found");
-    }
+    res = { data: slugRes.data[0] };
 
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching product:", error);
+    return res.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.log("ERROR FETCHING PRODUCT", error.response?.data);
     return null;
   }
 }
 
 // Generate metadata for SEO
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await fetchProduct(slug);
-
-  if (!product) {
-    return {
-      title: "Product Not Found | Delhi Book Market",
-      description: "The requested product could not be found.",
-      robots: "noindex, nofollow",
-    };
-  }
-
-  const productTitle = product.name;
-  const productDescription =
-    product.short_description || extractTextFromHTML(product.description);
-  const productImage = product.images?.[0]?.src;
-  const productUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/${product.permalink
-    .split("/")
-    .filter(Boolean)
-    .pop()}`;
-  const keywords = generateKeywords(product);
-
-  return {
-    title: `${productTitle} | Delhi Book Market`,
-    description: productDescription,
-    keywords: keywords,
-    authors: [{ name: "Delhi Book Market" }],
-    creator: "Delhi Book Market",
-    publisher: "Delhi Book Market",
-
-    // Open Graph
-    openGraph: {
-      type: "website",
-      locale: "en_IN",
-      url: productUrl,
-      title: `${productTitle} | Delhi Book Market`,
-      description: productDescription,
-      siteName: "Delhi Book Market",
-      images: productImage
-        ? [
-            {
-              url: productImage,
-              width: 800,
-              height: 600,
-              alt: product.images?.[0]?.alt || productTitle,
-              type: "image/jpeg",
-            },
-          ]
-        : [],
-    },
-
-    // Twitter Card
-    twitter: {
-      card: "summary_large_image",
-      site: "@delhibookmarket", // Replace with actual Twitter handle
-      creator: "@delhibookmarket",
-      title: `${productTitle} | Delhi Book Market`,
-      description: productDescription,
-      images: productImage ? [productImage] : [],
-    },
-
-    // Additional metadata
-    category: product.categories?.[0]?.name || "Books",
-
-    // Robots
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        "max-video-preview": -1,
-        "max-image-preview": "large",
-        "max-snippet": -1,
-      },
-    },
-
-    // Canonical URL
-    alternates: {
-      canonical: productUrl,
-    },
-
-    // Additional tags
-    other: {
-      "product:price:amount": product.sale_price || product.price,
-      "product:price:currency": "INR",
-      "product:availability": "in stock",
-      "product:condition": "new",
-      "product:retailer_item_id": product.id.toString(),
-      "og:price:amount": product.sale_price || product.price,
-      "og:price:currency": "INR",
-    },
-  };
-}
 
 export default async function ProductPage({
   params,
@@ -290,6 +203,8 @@ export default async function ProductPage({
       </div>
     );
   }
+
+  console.log(slug);
 
   const product = await fetchProduct(slug);
 
