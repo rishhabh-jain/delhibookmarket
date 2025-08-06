@@ -24,6 +24,66 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: "/sale-offers",
+        destination: "/promo-code",
+        permanent: false,
+      },
+      {
+        source: "/diwali-offers",
+        destination: "/promo-code",
+        permanent: false,
+      },
+      {
+        source: "/apple-touch-icon.png",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/apple-touch-icon-precomposed.png",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/apple-touch-icon-120x120-precomposed.png",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/about-us",
+        destination: "https://shop.delhibookmarket.com/about-us",
+        permanent: false,
+      },
+      {
+        source: "/shipping-policy",
+        destination: "https://shop.delhibookmarket.com/shipping-policy",
+        permanent: false,
+      },
+      {
+        source: "/sellbooks",
+        destination: "https://shop.delhibookmarket.com/sellbooks",
+        permanent: false,
+      },
+      {
+        source: "/terms-and-conditions",
+        destination: "https://shop.delhibookmarket.com/terms-and-conditions",
+        permanent: false,
+      },
+      {
+        source: "/returns-refunds-policy",
+        destination: "https://shop.delhibookmarket.com/returns-refunds-policy",
+        permanent: false,
+      },
+      {
+        source: "/customer-reviews",
+        destination: "https://shop.delhibookmarket.com/customer-reviews",
+        permanent: false,
+      },
+      {
+        source: "/wishlist",
+        destination: "https://shop.delhibookmarket.com/wishlist",
+        permanent: false,
+      },
+      {
         source: "/wp-login.php",
         destination: "https://shop.delhibookmarket.com/wp-login.php",
         permanent: false,
