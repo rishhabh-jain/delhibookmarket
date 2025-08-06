@@ -491,7 +491,7 @@ export default function CheckoutPage() {
 
     const minimumAmount = Number(coupon.minimum_amount);
 
-    if (finalTotal < minimumAmount) {
+    if (total < minimumAmount) {
       showToast({
         variant: "warning",
         message: `Minimum order amount for this coupon is ₹${minimumAmount}`,
