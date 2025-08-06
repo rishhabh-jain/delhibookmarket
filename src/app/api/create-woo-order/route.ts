@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error creating order:", error);
 
+    console.log("ERRoR", error.response.data);
+
     // Handle different types of errors
     if (error.response) {
       // WooCommerce API returned an error

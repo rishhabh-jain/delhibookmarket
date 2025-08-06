@@ -310,11 +310,7 @@ export default function ProductClient({ product }: ProductClientProps) {
     };
   };
 
-  const {
-    quantity: stockQuantity,
-    status: stockStatusValue,
-    isInStock,
-  } = getCurrentStock();
+  const { quantity: stockQuantity, isInStock } = getCurrentStock();
 
   return (
     <>

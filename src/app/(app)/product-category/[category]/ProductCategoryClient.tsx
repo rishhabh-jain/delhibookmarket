@@ -81,7 +81,7 @@ export default function ProductCategoryClient({
   category: string;
   categoryName: string;
 }) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
@@ -140,8 +140,6 @@ export default function ProductCategoryClient({
   const allProducts = useMemo(() => {
     return data?.pages.flatMap((page) => page.products) ?? [];
   }, [data]);
-
-  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   const formatPrice = (price: string) => {
     const numPrice = Number.parseFloat(price);

@@ -1,5 +1,3 @@
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import Header from "@/components/header-footer/Header";
 import Footer from "@/components/home/Footer";
 

@@ -8,8 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
-import { sendCartToWooCommerce } from "@/utils/cartSync";
-import { useRouter } from "next/navigation";
 import DeliveryChecker from "@/components/DeliveryChecker";
 
 // Mock useCart hook - replace with your actual implementation
@@ -28,11 +26,6 @@ interface CartItem {
 
 export default function CartClient() {
   const { items, total, itemCount, updateQuantity, removeItem } = useCart();
-  const router = useRouter();
-
-  const cartItems = items.map((item) => {
-    return { product_id: item.id, quantity: item.quantity };
-  });
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
     if (newQuantity > item.stock_quantity && item.stock_status === "instock") {

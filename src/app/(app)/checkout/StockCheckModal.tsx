@@ -72,13 +72,6 @@ const StockCheckModal: React.FC<StockCheckModalProps> = ({
     }
   };
 
-  const handleUpdateQuantity = (productId: number) => {
-    const newQuantity = localQuantities[productId];
-    if (newQuantity) {
-      updateQuantity(productId, newQuantity);
-    }
-  };
-
   const handleRemoveItem = (productId: number) => {
     removeItem(productId);
   };
@@ -144,9 +137,6 @@ const StockCheckModal: React.FC<StockCheckModalProps> = ({
                 Items Out of Stock
               </h3>
               {completelyOutOfStock.map((item) => {
-                const cartItem = cartItems.find(
-                  (ci) => ci.id === item.product_id
-                );
                 return (
                   <div
                     key={item.product_id}
@@ -187,9 +177,6 @@ const StockCheckModal: React.FC<StockCheckModalProps> = ({
                 Limited Stock Items
               </h3>
               {partiallyOutOfStock.map((item) => {
-                const cartItem = cartItems.find(
-                  (ci) => ci.id === item.product_id
-                );
                 const currentQuantity =
                   localQuantities[item.product_id] || item.available_quantity;
 

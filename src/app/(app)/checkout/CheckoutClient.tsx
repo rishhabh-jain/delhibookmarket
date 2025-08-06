@@ -62,7 +62,6 @@ interface RazorpayOptions {
   name: string;
   description: string;
   order_id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handler: (response: any) => void;
   prefill: {
     name: string;
@@ -76,7 +75,6 @@ interface RazorpayOptions {
 
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay: any;
   }
 }
@@ -151,7 +149,6 @@ export default function CheckoutPage() {
   const [createAccount, setCreateAccount] = useState(false);
   const [reviewInvite, setReviewInvite] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [user, setUser] = useState<any>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [, setIsFormPopulated] = useState(false);
@@ -434,7 +431,6 @@ export default function CheckoutPage() {
         name: "Delhi Book Market",
         description: "Book Order Payment",
         order_id: razorpayOrderData.id, // 🔥 Fix: should be Razorpay's order ID
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handler: async function (response: any) {
           setIsVerifyingPayment(true);
           // 👇 Hit your verification route
