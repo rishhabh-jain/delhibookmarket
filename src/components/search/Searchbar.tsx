@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { Loader2, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 // Type definitions
 interface ProductImage {
@@ -640,8 +641,10 @@ const AdvancedSearchBar: React.FC = () => {
                     }}
                   >
                     <div className="flex items-center space-x-3">
-                      <img
+                      <Image
                         src={product.images[0]?.src || ""}
+                        width={12}
+                        height={12}
                         alt={product.images[0]?.alt || product.name}
                         className="w-12 h-12 object-cover rounded border flex-shrink-0"
                         onError={(e) => {
