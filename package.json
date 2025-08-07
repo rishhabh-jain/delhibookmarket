@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "npm run generate-products",
     "generate-products": "tsx scripts/generate-products.ts",
     "build": "next build",
     "start": "next start",

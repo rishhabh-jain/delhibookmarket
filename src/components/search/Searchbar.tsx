@@ -1,748 +1,771 @@
-"use client";
-import { useState, useEffect, useRef } from "react";
-import { Search, X, ExternalLink } from "lucide-react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import { Loader2, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-interface Product {
+// Type definitions
+interface ProductImage {
+  id?: number;
+  src: string;
+  name?: string;
+  alt: string;
+}
+
+interface SearchIndexItem {
   id: number;
   name: string;
-  permalink: string;
-  price: string;
-  images: Array<{
-    id: number;
-    src: string;
-    name: string;
-    alt: string;
-  }>;
-  stock_quantity: number;
   slug: string;
+  price: string;
+  images: ProductImage[];
+  stock_quantity: number;
+  total_sales: number;
+  permalink: string;
+  normalizedName?: string;
+  isComboProduct?: boolean;
+  author?: string;
 }
 
-interface SearchResult extends Product {
-  score: number;
-  matchType: "exact" | "fuzzy" | "partial";
+interface RelevanceScore {
+  exactMatches: number;
+  partialMatches: number;
+  characterMatchScore: number;
+  authorMatchScore: number;
+  sales: number;
+  isComboProduct: boolean;
+  priority: "exact" | "partial" | "none";
 }
 
-export default function BookSearchBar() {
-  const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+interface SearchResult extends SearchIndexItem {
+  relevance: RelevanceScore;
+  bookFormat?: "paperback" | "hardcover" | "unknown";
+}
 
-  const searchRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+// Book format detection keywords
+const formatKeywords = {
+  paperback: ["paperback", "pb", "paper back", "softcover", "soft cover"],
+  hardcover: [
+    "hardcover",
+    "hc",
+    "hard cover",
+    "hardback",
+    "hard back",
+    "cloth",
+  ],
+};
 
-  // Load products data
+// Synonyms mapping for better search
+const synonyms: Record<string, string[]> = {
+  boxset: ["box set", "set", "combo", "series", "collection"],
+  set: ["boxset", "box set", "combo", "series", "collection"],
+  combo: ["boxset", "box set", "set", "series", "collection"],
+  series: ["boxset", "box set", "set", "combo", "collection"],
+  collection: ["boxset", "box set", "set", "combo", "series"],
+};
+
+// Set-related keywords that indicate user wants combo products
+const setKeywords = [
+  "boxset",
+  "box set",
+  "set",
+  "combo",
+  "series",
+  "collection",
+  "complete",
+  "bundle",
+  "pack",
+  "box",
+  "sets",
+];
+
+const INITIAL_RESULTS_LIMIT = 8;
+const LOAD_MORE_LIMIT = 6;
+
+const AdvancedSearchBar: React.FC = () => {
+  const [products, setProducts] = useState<SearchIndexItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showResults, setShowResults] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [displayLimit, setDisplayLimit] = useState<number>(
+    INITIAL_RESULTS_LIMIT
+  );
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+
+  const resultsContainerRef = useRef<HTMLDivElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    fetch("/data/search-index.json")
-      .then((res) => res.json())
-      .then((data) => setProducts(data))
-      .catch((err) => console.error("Failed to load products:", err));
+    const loadProducts = async (): Promise<void> => {
+      try {
+        // Uncomment below for real API call
+        const response = await fetch("/data/search-index.json");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: SearchIndexItem[] = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("Error loading products:", error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
   }, []);
 
-  // Levenshtein distance calculation for fuzzy matching
+  useEffect(() => {
+    setDisplayLimit(INITIAL_RESULTS_LIMIT);
+  }, [searchTerm]);
+
+  // Detect book format from product name
+  const detectBookFormat = (
+    productName: string
+  ): "paperback" | "hardcover" | "unknown" => {
+    const normalizedName = productName.toLowerCase();
+
+    // Check for paperback keywords
+    for (const keyword of formatKeywords.paperback) {
+      if (normalizedName.includes(keyword)) {
+        return "paperback";
+      }
+    }
+
+    // Check for hardcover keywords
+    for (const keyword of formatKeywords.hardcover) {
+      if (normalizedName.includes(keyword)) {
+        return "hardcover";
+      }
+    }
+
+    return "unknown";
+  };
+
+  // Normalize text for better matching - removes special characters and contractions
+  const normalizeText = (text: string): string => {
+    return (
+      text
+        .toLowerCase()
+        // Handle contractions: don't -> dont, can't -> cant, won't -> wont, etc.
+        .replace(/won't/g, "wont")
+        .replace(/can't/g, "cant")
+        .replace(/n't/g, "nt")
+        .replace(/('ll|'re|'ve|'d)/g, "")
+        .replace(/'/g, "")
+        // Remove all special characters except spaces
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    );
+  };
+
+  // Check if search term indicates user wants combo products
+  const isSearchingForSets = (searchTerm: string): boolean => {
+    const normalized = normalizeText(searchTerm);
+    return setKeywords.some(
+      (keyword) =>
+        normalized.includes(keyword) ||
+        normalized
+          .split(" ")
+          .some((word) => keyword.includes(word) || word.includes(keyword))
+    );
+  };
+
+  // Get expanded search terms including synonyms
+  const getExpandedSearchTerms = (searchTerm: string): string[] => {
+    const normalized = normalizeText(searchTerm);
+    const terms = normalized.split(" ");
+    const expandedTerms = new Set(terms);
+
+    const searchingForSets = isSearchingForSets(searchTerm);
+
+    terms.forEach((term) => {
+      if (searchingForSets && synonyms[term]) {
+        synonyms[term].forEach((synonym) => expandedTerms.add(synonym));
+      }
+      if (searchingForSets) {
+        Object.keys(synonyms).forEach((key) => {
+          if (key.includes(term) || term.includes(key)) {
+            synonyms[key].forEach((synonym) => expandedTerms.add(synonym));
+          }
+        });
+      }
+    });
+
+    return Array.from(expandedTerms);
+  };
+
+  // Calculate character match accuracy including author matching
+  const calculateCharacterMatchScore = (
+    productName: string,
+    searchTerm: string,
+    authorName?: string
+  ): { characterScore: number; authorScore: number } => {
+    const normalizedProduct = normalizeText(productName);
+    const normalizedSearch = normalizeText(searchTerm);
+    const normalizedAuthor = authorName ? normalizeText(authorName) : "";
+
+    // Calculate product name match
+    let characterScore = 0;
+
+    // Exact match gets highest score
+    if (normalizedProduct.includes(normalizedSearch)) {
+      characterScore = 100;
+    } else {
+      // Calculate character similarity
+      const productWords = normalizedProduct.split(" ");
+      const searchWords = normalizedSearch.split(" ");
+
+      let totalScore = 0;
+      let matchedWords = 0;
+
+      searchWords.forEach((searchWord) => {
+        let bestWordScore = 0;
+
+        productWords.forEach((productWord) => {
+          if (productWord === searchWord) {
+            bestWordScore = 100; // Exact word match
+          } else if (productWord.includes(searchWord)) {
+            bestWordScore = Math.max(bestWordScore, 80); // Search word is substring
+          } else if (searchWord.includes(productWord)) {
+            bestWordScore = Math.max(bestWordScore, 70); // Product word is substring
+          } else {
+            // Calculate Levenshtein distance for partial matches
+            const distance = levenshteinDistance(searchWord, productWord);
+            const maxLength = Math.max(searchWord.length, productWord.length);
+            const similarity = ((maxLength - distance) / maxLength) * 100;
+            if (similarity > 60) {
+              // Only consider if similarity is > 60%
+              bestWordScore = Math.max(bestWordScore, similarity * 0.5);
+            }
+          }
+        });
+
+        if (bestWordScore > 0) {
+          totalScore += bestWordScore;
+          matchedWords++;
+        }
+      });
+
+      characterScore = matchedWords > 0 ? totalScore / searchWords.length : 0;
+    }
+
+    // Calculate author match
+    let authorScore = 0;
+    if (normalizedAuthor) {
+      if (normalizedAuthor.includes(normalizedSearch)) {
+        authorScore = 90; // Slightly less than exact product match
+      } else {
+        const authorWords = normalizedAuthor.split(" ");
+        const searchWords = normalizedSearch.split(" ");
+
+        let authorTotalScore = 0;
+        let authorMatchedWords = 0;
+
+        searchWords.forEach((searchWord) => {
+          authorWords.forEach((authorWord) => {
+            if (authorWord === searchWord) {
+              authorTotalScore += 90;
+              authorMatchedWords++;
+            } else if (
+              authorWord.includes(searchWord) &&
+              searchWord.length >= 3
+            ) {
+              authorTotalScore += 60;
+              authorMatchedWords++;
+            }
+          });
+        });
+
+        authorScore =
+          authorMatchedWords > 0 ? authorTotalScore / searchWords.length : 0;
+      }
+    }
+
+    return { characterScore, authorScore };
+  };
+
+  // Simple Levenshtein distance implementation
   const levenshteinDistance = (str1: string, str2: string): number => {
-    const matrix = Array(str2.length + 1)
-      .fill(null)
-      .map(() => Array(str1.length + 1).fill(null));
+    const matrix = [];
 
-    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
 
-    for (let j = 1; j <= str2.length; j++) {
-      for (let i = 1; i <= str1.length; i++) {
-        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1, // deletion
-          matrix[j - 1][i] + 1, // insertion
-          matrix[j - 1][i - 1] + indicator // substitution
-        );
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
       }
     }
 
     return matrix[str2.length][str1.length];
   };
 
-  // Calculate similarity score (0-1, where 1 is perfect match)
-  const calculateSimilarity = (str1: string, str2: string): number => {
-    const maxLength = Math.max(str1.length, str2.length);
-    if (maxLength === 0) return 1;
-    const distance = levenshteinDistance(
-      str1.toLowerCase(),
-      str2.toLowerCase()
-    );
-    return (maxLength - distance) / maxLength;
-  };
+  // Calculate relevance score with NEW priority system
+  const calculateRelevanceScore = (
+    product: SearchIndexItem,
+    searchTerms: string[],
+    originalSearchTerm: string
+  ): RelevanceScore => {
+    const productName = product.normalizedName || normalizeText(product.name);
+    const productWords = productName.split(" ");
+    const searchingForSets = isSearchingForSets(originalSearchTerm);
 
-  // Check for transposition (adjacent character swap)
-  const hasTransposition = (str1: string, str2: string): boolean => {
-    if (Math.abs(str1.length - str2.length) > 1) return false;
+    let exactMatches = 0;
+    let partialMatches = 0;
 
-    const s1 = str1.toLowerCase();
-    const s2 = str2.toLowerCase();
+    // Count exact and partial matches
+    searchTerms.forEach((term) => {
+      if (!term) return;
 
-    let differences = 0;
-    let transpositionFound = false;
-
-    for (let i = 0; i < Math.min(s1.length, s2.length) - 1; i++) {
-      if (s1[i] !== s2[i]) {
-        differences++;
-        // Check for adjacent swap
-        if (!transpositionFound && i < s1.length - 1 && i < s2.length - 1) {
-          if (s1[i] === s2[i + 1] && s1[i + 1] === s2[i]) {
-            transpositionFound = true;
-            i++; // Skip next character as it's part of the transposition
-            continue;
-          }
-        }
-      }
-    }
-
-    return transpositionFound && differences <= 2;
-  };
-
-  // Normalize text for better matching
-  const normalizeText = (text: string): string => {
-    return text
-      .toLowerCase()
-      .replace(/[^\w\s]/g, "") // Remove punctuation
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim();
-  };
-
-  // Check if query matches with word boundaries
-  const wordBoundaryMatch = (text: string, query: string): boolean => {
-    const normalizedText = normalizeText(text);
-    const normalizedQuery = normalizeText(query);
-    const words = normalizedText.split(" ");
-
-    return words.some(
-      (word) =>
-        word.startsWith(normalizedQuery) ||
-        calculateSimilarity(word, normalizedQuery) > 0.7
-    );
-  };
-
-  // Check if product is a combo/series/set
-  const isComboProduct = (product: Product): boolean => {
-    return /(\+|combo|bundle|set|collection|series|box|boxset|complete|volume|pack)/i.test(
-      product.name
-    );
-  };
-
-  // Smart combo query detection with fuzzy matching for partial words
-  const isComboQuery = (query: string): boolean => {
-    const normalizedQuery = normalizeText(query);
-    const words = normalizedQuery.split(/\s+/);
-
-    // Define combo keywords and their common variations/typos
-    const comboPatterns = {
-      set: ["set", "sets", "sett", "sete"],
-      series: ["series", "serie", "seri", "ser", "seres", "seris"],
-      combo: ["combo", "combos", "com", "comb", "compo"],
-      bundle: ["bundle", "bundles", "bundl", "bund", "bundel"],
-      collection: ["collection", "collections", "collect", "col", "collec"],
-      box: ["box", "boxes", "boxs", "boxe"],
-      boxset: ["boxset", "boxsets", "box set", "box sets"],
-      complete: ["complete", "complet", "comp", "complte"],
-      pack: ["pack", "packs", "pak", "packe"],
-      volume: ["volume", "volumes", "vol", "vols", "volum"],
-    };
-
-    // Check each word in the query
-    for (const word of words) {
-      // Direct pattern matching for partial words
-      for (const [mainKeyword, variations] of Object.entries(comboPatterns)) {
-        // Check if word matches any variation exactly
-        if (variations.some((variation) => variation === word)) {
-          return true;
-        }
-
-        // Check if word is a prefix of any variation (for partial typing)
-        if (
-          variations.some(
-            (variation) => variation.startsWith(word) && word.length >= 2
-          )
-        ) {
-          return true;
-        }
-
-        // Fuzzy matching for typos (minimum 3 characters for fuzzy matching)
-        if (word.length >= 3) {
-          for (const variation of variations) {
-            const similarity = calculateSimilarity(word, variation);
-            // Lower threshold for shorter words, higher for longer ones
-            const threshold = variation.length <= 4 ? 0.6 : 0.7;
-            if (similarity >= threshold) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-
-    // Additional check for single character queries that might be starting combo words
-    if (normalizedQuery.length === 1) {
-      const singleCharStarters = ["s", "c", "b", "p", "v"]; // series, combo, box/bundle, pack, volume
-      return singleCharStarters.includes(normalizedQuery);
-    }
-
-    // Check for two character queries
-    if (normalizedQuery.length === 2) {
-      const twoCharStarters = [
-        "se",
-        "sr",
-        "co",
-        "cm",
-        "bo",
-        "bx",
-        "pa",
-        "pk",
-        "vo",
-        "vl",
-      ];
-      return twoCharStarters.includes(normalizedQuery);
-    }
-
-    return false;
-  };
-
-  // Get combo query confidence level
-  const getComboQueryConfidence = (query: string): number => {
-    const normalizedQuery = normalizeText(query);
-    const words = normalizedQuery.split(/\s+/);
-
-    const exactComboKeywords = [
-      "set",
-      "sets",
-      "series",
-      "combo",
-      "combos",
-      "bundle",
-      "bundles",
-      "collection",
-      "collections",
-      "box",
-      "boxes",
-      "boxset",
-      "boxsets",
-      "complete",
-      "pack",
-      "packs",
-      "volume",
-      "volumes",
-    ];
-
-    // High confidence for exact matches
-    if (words.some((word) => exactComboKeywords.includes(word))) {
-      return 1.0;
-    }
-
-    // Medium confidence for partial matches and common typos
-    const partialMatches = [
-      "ser",
-      "seri",
-      "serie",
-      "com",
-      "comb",
-      "boxe",
-      "complet",
-    ];
-    if (words.some((word) => partialMatches.includes(word))) {
-      return 0.8;
-    }
-
-    // Lower confidence for very short queries that might be combo-related
-    if (
-      normalizedQuery.length <= 2 &&
-      ["s", "c", "b", "se", "co", "bo"].includes(normalizedQuery)
-    ) {
-      return 0.3;
-    }
-
-    return 0.0;
-  };
-
-  // Advanced fuzzy search function
-  const fuzzySearch = (products: Product[], query: string): SearchResult[] => {
-    if (!query.trim()) return [];
-
-    const normalizedQuery = normalizeText(query);
-    const results: SearchResult[] = [];
-    const isQueryForCombo = isComboQuery(query);
-    const comboConfidence = getComboQueryConfidence(query);
-
-    products.forEach((product) => {
-      const bookTitle = normalizeText(extractBookTitle(product.name));
-      const author = normalizeText(extractAuthor(product.name));
-      const slug = normalizeText(product.slug.replace(/-/g, " "));
-      const isProductCombo = isComboProduct(product);
-
-      let bestScore = 0;
-      let matchType: "exact" | "fuzzy" | "partial" = "partial";
-
-      // Exact match check
-      if (
-        bookTitle.includes(normalizedQuery) ||
-        author.includes(normalizedQuery)
+      if (productWords.includes(term)) {
+        exactMatches++;
+      } else if (
+        term.length >= 3 &&
+        productWords.some((word) => word.includes(term) || term.includes(word))
       ) {
-        bestScore = 1.0;
-        matchType = "exact";
-      }
-
-      // Word boundary fuzzy matching
-      else if (
-        wordBoundaryMatch(bookTitle, normalizedQuery) ||
-        wordBoundaryMatch(author, normalizedQuery)
-      ) {
-        bestScore = 0.9;
-        matchType = "fuzzy";
-      }
-
-      // Character-level fuzzy matching
-      else {
-        const titleSimilarity = calculateSimilarity(bookTitle, normalizedQuery);
-        const authorSimilarity = calculateSimilarity(author, normalizedQuery);
-        const slugSimilarity = calculateSimilarity(slug, normalizedQuery);
-
-        bestScore = Math.max(titleSimilarity, authorSimilarity, slugSimilarity);
-
-        // Check for transpositions (common typos)
-        if (bestScore < 0.6) {
-          const titleWords = bookTitle.split(" ");
-          const authorWords = author.split(" ");
-
-          for (const word of [...titleWords, ...authorWords]) {
-            if (hasTransposition(word, normalizedQuery)) {
-              bestScore = Math.max(bestScore, 0.8);
-              matchType = "fuzzy";
-              break;
-            }
-          }
-        }
-
-        if (bestScore >= 0.6) {
-          matchType = "fuzzy";
-        }
-      }
-
-      // Enhanced combo/series logic with confidence levels
-      if (isQueryForCombo) {
-        // User is looking for combo products
-        if (isProductCombo) {
-          // Boost based on confidence level
-          const boostMultiplier = 1.2 + comboConfidence * 0.8; // 1.2 to 2.0
-          bestScore *= boostMultiplier;
-        } else {
-          // Penalty for single books, but less harsh for low confidence queries
-          const penaltyMultiplier = comboConfidence > 0.7 ? 0.2 : 0.5;
-          bestScore *= penaltyMultiplier;
-        }
-      } else {
-        // User is NOT looking for combo products - prioritize single books
-        if (isProductCombo) {
-          bestScore *= 0.4; // Penalty for combo products
-        } else {
-          bestScore *= 1.2; // Boost for single books
-        }
-      }
-
-      // For very short queries that might be combo-related, show both types but prefer combos
-      if (
-        normalizedQuery.length <= 3 &&
-        isQueryForCombo &&
-        comboConfidence <= 0.5
-      ) {
-        if (isProductCombo) {
-          bestScore *= 1.3; // Moderate boost for combos
-        }
-        // Don't penalize single books as much for ambiguous short queries
-      }
-
-      // Boost score for in-stock items
-      if (product.stock_quantity > 0) {
-        bestScore *= 1.1;
-      }
-
-      // Dynamic threshold based on query length and combo confidence
-      let threshold = 0.4;
-      if (isQueryForCombo) {
-        // Lower threshold for combo queries to show more results
-        threshold = comboConfidence > 0.7 ? 0.3 : 0.35;
-      }
-
-      if (bestScore > threshold) {
-        results.push({
-          ...product,
-          score: bestScore,
-          matchType,
-        });
+        partialMatches++;
       }
     });
 
-    // Enhanced sorting logic
-    return results
+    // Calculate character match score and author match score
+    const { characterScore, authorScore } = calculateCharacterMatchScore(
+      product.name,
+      originalSearchTerm,
+      product.author
+    );
+
+    const isComboProduct =
+      product.isComboProduct !== undefined
+        ? product.isComboProduct
+        : productWords.some((word) =>
+            [
+              "boxset",
+              "box",
+              "set",
+              "combo",
+              "series",
+              "collection",
+              "complete",
+            ].includes(word)
+          );
+
+    // Determine priority category
+    let priority: "exact" | "partial" | "none" = "none";
+    if (exactMatches > 0 || characterScore > 80 || authorScore > 70) {
+      priority = "exact";
+    } else if (partialMatches > 0 || characterScore > 40 || authorScore > 40) {
+      priority = "partial";
+    }
+
+    return {
+      exactMatches,
+      partialMatches,
+      characterMatchScore: characterScore,
+      authorMatchScore: authorScore,
+      sales: product.total_sales || 0,
+      isComboProduct,
+      priority,
+    };
+  };
+
+  // Search and filter products with NEW sorting logic
+  const allSearchResults: SearchResult[] = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+
+    const searchTerms = getExpandedSearchTerms(searchTerm);
+    const searchingForSets = isSearchingForSets(searchTerm);
+
+    const results = products
+      .map((product) => ({
+        ...product,
+        relevance: calculateRelevanceScore(product, searchTerms, searchTerm),
+        bookFormat: detectBookFormat(product.name),
+      }))
+      .filter((product) => product.relevance.priority !== "none")
       .sort((a, b) => {
-        const aIsCombo = isComboProduct(a);
-        const bIsCombo = isComboProduct(b);
+        // NEW PRIORITY SYSTEM - FIXED ORDER
 
-        // If user is searching for combo products
-        if (isQueryForCombo) {
-          // Strong preference for combo products when confidence is high
-          if (comboConfidence > 0.7) {
-            if (aIsCombo && !bIsCombo) return -1;
-            if (!aIsCombo && bIsCombo) return 1;
+        // Special case: If searching for sets, combo products get top priority
+        if (searchingForSets) {
+          if (a.relevance.isComboProduct !== b.relevance.isComboProduct) {
+            return b.relevance.isComboProduct ? 1 : -1;
           }
-          // Moderate preference when confidence is medium
-          else if (comboConfidence > 0.3) {
-            const aComboBonus = aIsCombo ? 0.2 : 0;
-            const bComboBonus = bIsCombo ? 0.2 : 0;
-            const adjustedScoreDiff =
-              b.score + bComboBonus - (a.score + aComboBonus);
-            if (Math.abs(adjustedScoreDiff) > 0.1) return adjustedScoreDiff;
-          }
-        } else {
-          // User is NOT searching for combo products - prioritize single books
-          if (aIsCombo && !bIsCombo) return 1;
-          if (!aIsCombo && bIsCombo) return -1;
         }
 
-        // Prioritize exact matches, then fuzzy, then partial
-        const typeScore = { exact: 3, fuzzy: 2, partial: 1 };
-        const typeDiff = typeScore[b.matchType] - typeScore[a.matchType];
-        if (typeDiff !== 0) return typeDiff;
-
-        // Then by similarity score
-        const scoreDiff = b.score - a.score;
-        if (Math.abs(scoreDiff) > 0.1) return scoreDiff;
-
-        // Finally by stock availability
-        return (b.stock_quantity > 0 ? 1 : 0) - (a.stock_quantity > 0 ? 1 : 0);
-      })
-      .slice(0, 10); // Show more results for combo queries
-  };
-
-  // Advanced search with debouncing
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredProducts([]);
-      setShowResults(false);
-      setSelectedIndex(-1);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-
-    // Shorter debounce for better responsiveness with smart matching
-    const timeoutId = setTimeout(() => {
-      const results = fuzzySearch(products, searchTerm);
-      setFilteredProducts(results);
-      setShowResults(true);
-      setSelectedIndex(-1);
-      setIsLoading(false);
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, products]);
-
-  // Extract book title from full product name
-  const extractBookTitle = (fullName: string) => {
-    const match = fullName.match(/Buy (.+?) by/);
-    return match ? match[1] : fullName.replace("Buy ", "");
-  };
-
-  // Extract author from full product name
-  const extractAuthor = (fullName: string) => {
-    const match = fullName.match(/by (.+?) \(/);
-    return match ? match[1] : "";
-  };
-
-  // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showResults || filteredProducts.length === 0) return;
-
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev < filteredProducts.length - 1 ? prev + 1 : prev
+        // Priority 1: Character match accuracy (including author match)
+        const aMatchScore = Math.max(
+          a.relevance.characterMatchScore,
+          a.relevance.authorMatchScore
         );
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (selectedIndex >= 0) {
-          window.open(filteredProducts[selectedIndex].permalink, "_blank");
+        const bMatchScore = Math.max(
+          b.relevance.characterMatchScore,
+          b.relevance.authorMatchScore
+        );
+        const charDiff = bMatchScore - aMatchScore;
+        if (Math.abs(charDiff) > 10) {
+          return charDiff;
         }
-        break;
-      case "Escape":
-        setShowResults(false);
-        setSelectedIndex(-1);
-        searchRef.current?.blur();
-        break;
-    }
-  };
 
-  // Close results when clicking outside
+        // Priority 2: Number of sales
+        const salesDiff = b.relevance.sales - a.relevance.sales;
+        if (Math.abs(salesDiff) > 50) {
+          return salesDiff;
+        }
+
+        // Priority 3: Combo products (bonus points)
+        if (a.relevance.isComboProduct !== b.relevance.isComboProduct) {
+          return b.relevance.isComboProduct ? -1 : 1;
+        }
+
+        // Priority 4: Author match as tiebreaker
+        if (
+          Math.abs(
+            b.relevance.authorMatchScore - a.relevance.authorMatchScore
+          ) > 5
+        ) {
+          return b.relevance.authorMatchScore - a.relevance.authorMatchScore;
+        }
+
+        // Final tiebreaker: exact matches, then partial matches
+        if (b.relevance.exactMatches !== a.relevance.exactMatches) {
+          return b.relevance.exactMatches - a.relevance.exactMatches;
+        }
+
+        return b.relevance.partialMatches - a.relevance.partialMatches;
+      });
+
+    return results;
+  }, [products, searchTerm]);
+
+  const displayedResults = useMemo(() => {
+    return allSearchResults.slice(0, displayLimit);
+  }, [allSearchResults, displayLimit]);
+
+  const hasMoreResults = allSearchResults.length > displayLimit;
+
+  const loadMoreResults = useCallback(async () => {
+    if (isLoadingMore || !hasMoreResults) return;
+
+    setIsLoadingMore(true);
+
+    // Simulate loading delay (remove this in production)
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    setDisplayLimit((prev) => prev + LOAD_MORE_LIMIT);
+    setIsLoadingMore(false);
+  }, [isLoadingMore, hasMoreResults]);
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        resultsRef.current &&
-        !resultsRef.current.contains(event.target as Node)
-      ) {
-        setShowResults(false);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMoreResults && !isLoadingMore) {
+          loadMoreResults();
+        }
+      },
+      {
+        root: resultsContainerRef.current,
+        rootMargin: "50px",
+        threshold: 0.1,
+      }
+    );
+
+    if (loadMoreTriggerRef.current) {
+      observer.observe(loadMoreTriggerRef.current);
+    }
+
+    return () => {
+      if (loadMoreTriggerRef.current) {
+        observer.unobserve(loadMoreTriggerRef.current);
       }
     };
+  }, [hasMoreResults, isLoadingMore, loadMoreResults]);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // Helper function to get format badge styling
+  const getFormatBadgeStyle = (
+    format: "paperback" | "hardcover" | "unknown"
+  ) => {
+    switch (format) {
+      case "paperback":
+        return "px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex-shrink-0";
+      case "hardcover":
+        return "px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full flex-shrink-0";
+      default:
+        return "px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full flex-shrink-0";
+    }
+  };
 
-  const clearSearch = () => {
+  // Helper function to get format display text
+  const getFormatDisplayText = (
+    format: "paperback" | "hardcover" | "unknown"
+  ) => {
+    switch (format) {
+      case "paperback":
+        return "Paperback";
+      case "hardcover":
+        return "Hardcover";
+      default:
+        return "";
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setShowResults(value.trim().length > 0);
+  };
+
+  const clearSearch = (): void => {
     setSearchTerm("");
     setShowResults(false);
-    searchRef.current?.focus();
   };
 
-  const handleProductClick = (product: Product) => {
-    router.push(`/${product.slug}`);
+  const router = useRouter();
+
+  const handleResultClick = (product: SearchIndexItem): void => {
+    router.push(product.slug);
     setShowResults(false);
   };
 
-  // Highlight matching text
-  const highlightMatch = (text: string, query: string) => {
-    if (!query.trim()) return text;
-
-    const normalizedText = normalizeText(text);
-    const normalizedQuery = normalizeText(query);
-
-    // Simple highlighting for exact matches
-    const regex = new RegExp(`(${normalizedQuery})`, "gi");
-    return text.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
+  const handleManualSearch = (s: string) => {
+    router.push(`/s/${s}`);
+    setShowResults(false);
   };
 
-  const getMatchTypeColor = (matchType: "exact" | "fuzzy" | "partial") => {
-    switch (matchType) {
-      case "exact":
-        return "text-green-600";
-      case "fuzzy":
-        return "text-blue-600";
-      case "partial":
-        return "text-gray-600";
-      default:
-        return "text-gray-600";
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === "Escape") {
+      clearSearch();
+    } else if (e.key === "Enter") {
+      handleManualSearch(searchTerm);
     }
   };
 
-  // Get search suggestion text
-  const getSearchSuggestionText = () => {
-    const isQueryForCombo = isComboQuery(searchTerm);
-    const confidence = getComboQueryConfidence(searchTerm);
+  if (loading) {
+    return (
+      <div className="w-full max-w-2xl mx-auto p-4">
+        <div className="animate-pulse">
+          <div className="h-12 bg-gray-200 rounded-lg"></div>
+          <div className="mt-2 text-center text-gray-500">
+            Loading products...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-    if (isQueryForCombo && confidence > 0.3) {
-      return "Smart search detected: Looking for sets, series, or combos";
-    }
-    return "";
-  };
-
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      router.push(`/s/${searchTerm.trim()}`);
-      setShowResults(false); // optional: hide suggestions
-    }
-  };
+  const searchingForSets = isSearchingForSets(searchTerm);
 
   return (
-    <div className="relative w-full max-w-2xl my-2" ref={resultsRef}>
-      {/* Search Input */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-gray-400" />
-        </div>
+    <div className="w-full max-w-2xl mx-auto ">
+      <div className="relative mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Search for books, series, box sets..."
+            className="w-full pl-10 pr-10 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+            onFocus={() => searchTerm.trim() && setShowResults(true)}
+          />
+          {searchTerm && (
+            <button
+              className="absolute right-12 border-zinc-700 border rounded-lg top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10 p-2"
+              onClick={() => {
+                handleManualSearch(searchTerm);
+              }}
+              onKeyDown={() => {
+                handleManualSearch(searchTerm);
+              }}
+            >
+              <Search size={18} />
+              {""}
+            </button>
+          )}
 
-        <input
-          ref={searchRef}
-          type="text"
-          placeholder="Search books, authors, sets, series... Try: 'ser', 'com', 'boxe', 'sett'"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSearch();
-            else handleKeyDown(e);
-          }}
-          onFocus={() => filteredProducts.length > 0 && setShowResults(true)}
-          className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-lg"
-        />
-
-        {/* Search button with icon */}
-
-        {searchTerm && (
-          <button
-            onClick={clearSearch}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600"
-          >
-            <X className="h-5 w-5 text-gray-400" />
-            {""}
-          </button>
-        )}
-        <button
-          onClick={handleSearch}
-          className="absolute inset-y-0 right-10 pr-3 flex items-center hover:text-blue-600"
-        >
-          <Search className="h-5 w-5 text-gray-500" />
-          {""}
-        </button>
-
-        {/* Clear button */}
-      </div>
-
-      {/* Smart Search Indicator */}
-      {searchTerm && isComboQuery(searchTerm) && (
-        <div className="mt-1 text-xs text-purple-600 flex items-center">
-          <span className="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></span>
-          {getSearchSuggestionText()}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="absolute top-full left-0 right-0 bg-white border border-t-0 rounded-b-lg shadow-lg z-50 p-4">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span className="ml-2 text-gray-600">Smart searching...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Search Results */}
-      {showResults && !isLoading && filteredProducts.length > 0 && (
-        <div className="absolute top-full left-0 right-0 bg-white border border-t-0 rounded-b-lg shadow-xl z-50 max-h-96 overflow-y-auto">
-          {filteredProducts.map((product, index) => {
-            const bookTitle = extractBookTitle(product.name);
-            const author = extractAuthor(product.name);
-            const isProductCombo = isComboProduct(product);
-
-            return (
-              <div
-                key={product.id}
-                onClick={() => handleProductClick(product)}
-                className={`flex items-center p-4 cursor-pointer transition-all duration-150 ${
-                  index === selectedIndex
-                    ? "bg-blue-50 border-l-4 border-blue-500"
-                    : "hover:bg-gray-50"
-                } ${
-                  index !== filteredProducts.length - 1
-                    ? "border-b border-gray-100"
-                    : ""
-                }`}
-              >
-                {/* Book Cover */}
-                <div className="flex-shrink-0 w-12 h-16 mr-4">
-                  <img
-                    src={product.images[0]?.src}
-                    alt={product.images[0]?.alt || bookTitle}
-                    className="w-full h-full object-cover rounded shadow-sm"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src =
-                        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA0OCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAxNkMyNi4yMDkxIDE2IDI4IDE3Ljc5MDkgMjggMjBWNDRDMjggNDYuMjA5MSAyNi4yMDkxIDQ4IDI0IDQ4QzIxLjc5MDkgNDggMjAgNDYuMjA5MSAyMCA0NFYyMEMyMCAxNy43OTA5IDIxLjc5MDkgMTYgMjQgMTZaIiBmaWxsPSIjRDFENUQ5Ii8+Cjx0ZXh0IHg9IjI0IiB5PSIzNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzlDQTNBRiI+Qm9vazwvdGV4dD4KPC9zdmc+";
-                    }}
-                  />
-                </div>
-
-                {/* Book Details */}
-                <div className="flex-grow min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3
-                      className="font-semibold text-gray-900 truncate text-sm"
-                      dangerouslySetInnerHTML={{
-                        __html: highlightMatch(bookTitle, searchTerm),
-                      }}
-                    />
-                    {isProductCombo && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 font-medium">
-                        Set
-                      </span>
-                    )}
-                  </div>
-                  {author && (
-                    <p
-                      className="text-sm text-gray-600 truncate"
-                      dangerouslySetInnerHTML={{
-                        __html: `by ${highlightMatch(author, searchTerm)}`,
-                      }}
-                    />
-                  )}
-                  <div className="flex items-center mt-1 space-x-3">
-                    <span className="font-bold text-green-600">
-                      ₹{product.price}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${getMatchTypeColor(
-                        product.matchType
-                      )} bg-gray-100`}
-                    >
-                      {product.matchType === "exact"
-                        ? "Exact"
-                        : product.matchType === "fuzzy"
-                        ? "Smart Match"
-                        : "Similar"}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {Math.round(product.score * 100)}% match
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action Icons */}
-                <div className="flex-shrink-0 ml-4 flex items-center space-x-2">
-                  <ExternalLink className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Show more results indicator */}
-          {filteredProducts.length === 10 && (
-            <div className="p-3 text-center text-sm text-gray-500 bg-gray-50">
-              {isComboQuery(searchTerm)
-                ? "Showing top smart matches for sets and series. Try more specific terms for better results."
-                : "Showing top 10 smart matches. Try a more specific search for better results."}
-            </div>
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+              aria-label="Clear search"
+            >
+              <X className="w-5 h-5" />
+            </button>
           )}
         </div>
-      )}
 
-      {/* No Results */}
-      {showResults &&
-        !isLoading &&
-        searchTerm &&
-        filteredProducts.length === 0 && (
-          <div className="absolute top-full left-0 right-0 bg-white border border-t-0 rounded-b-lg shadow-lg z-50 p-6 text-center">
-            <div className="text-gray-500">
-              <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-lg font-medium">No books found</p>
-              <p className="text-sm mt-1">
-                {isComboQuery(searchTerm) && (
-                  <>
-                    <br />
-                    <span className="text-purple-600">
-                      Looking for sets/series? Try: &quot;harry potter
-                      set&quot;, &quot;series&quot;, or author names.
+        {/* Search Results */}
+        {showResults && (
+          <div
+            ref={resultsContainerRef}
+            className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto"
+          >
+            {displayedResults.length > 0 ? (
+              <>
+                <div className="px-3 py-2 text-sm text-gray-500 border-b bg-gray-50 flex items-center justify-between">
+                  <span>
+                    {displayedResults.length} result
+                    {displayedResults.length !== 1 ? "s" : ""} found
+                  </span>
+                  {/* {searchingForSets && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                      Sets & Collections Priority
                     </span>
-                  </>
+                  )}
+                  {!searchingForSets && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                      Match → Sales → Combo → Author
+                    </span>
+                  )} */}
+                </div>
+                {displayedResults.map((product, index) => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleResultClick(product)}
+                    className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleResultClick(product);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={product.images[0]?.src || ""}
+                        alt={product.images[0]?.alt || product.name}
+                        className="w-12 h-12 object-cover rounded border flex-shrink-0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src =
+                            "https://via.placeholder.com/48x48/e5e5e5/999999?text=Book";
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {product.name.replace(/^Buy\s+/i, "")}
+                          </h3>
+
+                          {/* {product.relevance.isComboProduct && (
+                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
+                              Set
+                            </span>
+                          )} */}
+                          {/* {!product.relevance.isComboProduct && (
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex-shrink-0">
+                              Single
+                            </span>
+                          )} */}
+                          {/* Book Format Badge */}
+                          <span
+                            className={getFormatBadgeStyle(product.bookFormat!)}
+                          >
+                            {getFormatDisplayText(product.bookFormat!)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-lg font-semibold text-green-600">
+                            ₹{parseInt(product.price).toLocaleString()}
+                          </p>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            {/* <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                              Match:{" "}
+                              {Math.round(
+                                Math.max(
+                                  product.relevance.characterMatchScore,
+                                  product.relevance.authorMatchScore
+                                )
+                              )}
+                              %
+                            </span> */}
+                            {product.relevance.authorMatchScore >
+                              product.relevance.characterMatchScore && (
+                              <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">
+                                Author
+                              </span>
+                            )}
+                            {(product.total_sales || 0) > 500 && (
+                              <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
+                                Popular
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {hasMoreResults && (
+                  <div
+                    ref={loadMoreTriggerRef}
+                    className="px-3 py-4 text-center"
+                  >
+                    {isLoadingMore ? (
+                      <div className="flex items-center justify-center space-x-2 text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">Loading more results...</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={loadMoreResults}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                      >
+                        Load more results (
+                        {allSearchResults.length - displayedResults.length}{" "}
+                        remaining)
+                      </button>
+                    )}
+                  </div>
                 )}
-              </p>
-            </div>
+
+                {/* End of Results Indicator */}
+                {!hasMoreResults &&
+                  allSearchResults.length > INITIAL_RESULTS_LIMIT && (
+                    <div className="px-3 py-2 text-center text-xs text-gray-500 bg-gray-50">
+                      All results loaded
+                    </div>
+                  )}
+              </>
+            ) : (
+              <div className="px-3 py-6 text-center text-gray-500">
+                <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <p className="font-medium">
+                  No products found for {searchTerm}
+                </p>
+                <p className="text-sm mt-1">
+                  Try searching with different keywords
+                </p>
+              </div>
+            )}
           </div>
         )}
+      </div>
     </div>
   );
-}
+};
+
+export default AdvancedSearchBar;
