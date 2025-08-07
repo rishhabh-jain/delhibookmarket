@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "generate-products": "tsx scripts/generate-products.ts",
-    "prebuild": "npm run generate-products",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
