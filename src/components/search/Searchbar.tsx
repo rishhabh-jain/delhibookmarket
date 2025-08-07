@@ -559,19 +559,6 @@ const AdvancedSearchBar: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="w-full max-w-2xl mx-auto p-4">
-        <div className="animate-pulse">
-          <div className="h-12 bg-gray-200 rounded-lg"></div>
-          <div className="mt-2 text-center text-gray-500">
-            Loading products...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const searchingForSets = isSearchingForSets(searchTerm);
 
   return (
