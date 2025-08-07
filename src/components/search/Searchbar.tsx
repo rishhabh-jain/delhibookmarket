@@ -90,7 +90,7 @@ const AdvancedSearchBar: React.FC = () => {
   const [products, setProducts] = useState<SearchIndexItem[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showResults, setShowResults] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [, setLoading] = useState<boolean>(true);
   const [displayLimit, setDisplayLimit] = useState<number>(
     INITIAL_RESULTS_LIMIT
   );
@@ -328,7 +328,7 @@ const AdvancedSearchBar: React.FC = () => {
   ): RelevanceScore => {
     const productName = product.normalizedName || normalizeText(product.name);
     const productWords = productName.split(" ");
-    const searchingForSets = isSearchingForSets(originalSearchTerm);
+    // const searchingForSets = isSearchingForSets(originalSearchTerm);
 
     let exactMatches = 0;
     let partialMatches = 0;
@@ -560,7 +560,7 @@ const AdvancedSearchBar: React.FC = () => {
     }
   };
 
-  const searchingForSets = isSearchingForSets(searchTerm);
+  // const searchingForSets = isSearchingForSets(searchTerm);
 
   return (
     <div className="w-full max-w-2xl mx-auto ">
@@ -626,7 +626,7 @@ const AdvancedSearchBar: React.FC = () => {
                     </span>
                   )} */}
                 </div>
-                {displayedResults.map((product, index) => (
+                {displayedResults.map((product) => (
                   <div
                     key={product.id}
                     onClick={() => handleResultClick(product)}
@@ -643,8 +643,8 @@ const AdvancedSearchBar: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <Image
                         src={product.images[0]?.src || ""}
-                        width={12}
-                        height={12}
+                        width={48}
+                        height={48}
                         alt={product.images[0]?.alt || product.name}
                         className="w-12 h-12 object-cover rounded border flex-shrink-0"
                         onError={(e) => {
