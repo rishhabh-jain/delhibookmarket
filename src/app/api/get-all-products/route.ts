@@ -23,7 +23,7 @@ export async function GET() {
         params: {
           per_page: perPage,
           page,
-          _fields: "id,name,permalink,price,images,slug",
+          _fields: "id,name,permalink,price,images,slug,total_sales",
         },
       });
 
