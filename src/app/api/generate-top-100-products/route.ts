@@ -12,16 +12,24 @@ const api = axios.create({
 
 export async function GET() {
   try {
-    const res = await api.get("products", {
-      params: {
-        per_page: 100,
-        orderby: "popularity",
-        order: "desc",
-        _fields: "slug",
-      },
-    });
+    const allProducts = [];
 
-    return NextResponse.json(res.data);
+    // Woo only gives max 100 per page, so get 5 pages
+    for (let page = 1; page <= 5; page++) {
+      const res = await api.get("products", {
+        params: {
+          per_page: 100,
+          page,
+          orderby: "popularity",
+          order: "desc",
+          _fields: "slug",
+        },
+      });
+
+      allProducts.push(...res.data);
+    }
+
+    return NextResponse.json(allProducts);
   } catch (error) {
     console.error("Error fetching top products:", error);
     return NextResponse.json(
