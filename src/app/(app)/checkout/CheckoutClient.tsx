@@ -419,6 +419,9 @@ export default function CheckoutPage() {
       const razorpayRes = await axios.post("/api/create-razorpay-order", {
         amountInRupees: Math.round(finalTotal), // total in ₹, backend will convert to paise
         wooOrderId: wooOrderData.id,
+        notes: {
+          woo_order_id: wooOrderData.id, // so webhook knows which Woo order to update
+        },
       });
 
       const razorpayOrderData = razorpayRes.data;
@@ -556,21 +559,6 @@ export default function CheckoutPage() {
     setAppliedCoupon(coupon);
   };
 
-  // const handleTestForm = () => {
-  //   reset({
-  //     email: "tester28@gmail.com",
-  //     first_name: "THIS IS A TEST",
-  //     last_name: "ORDER",
-  //     address_1: "TESTING ADDRESS STREET NO TEST 28 _ ADDRESS LINE 1",
-  //     address_2: "TESTING ADDRESS STREET NO TEST 28 _ ADDRESS LINE 2",
-  //     city: "TESTING CITY",
-  //     state: "haryana",
-  //     postcode: "122011",
-  //     country: "india",
-  //     phone: "9999999999",
-  //   });
-  // };
-
   const handleModalClose = () => {
     setIsModalOpen(false);
     setOutOfStockList([]);
@@ -585,6 +573,25 @@ export default function CheckoutPage() {
       handleUserRegistration();
     }
   }, [createAccount]);
+
+  // const testAutoFiller = () => {
+  //   reset({
+  //     email: "mythcihuman28@gmail.com",
+  //     first_name: "Sanchit Jain",
+  //     last_name: "TEST ORDER",
+  //     address_1: "A1-154,Sushant lok 2 ,Sector 55 , Gurgaon",
+  //     address_2: "Near orchids International school , gurgaon",
+  //     postcode: "122011",
+  //     city: "Gurgaon",
+  //     phone: "9650296375",
+  //   });
+  // };
+
+  // useEffect(() => {
+  //   if (process.env.NODE_ENV === "development") {
+  //     testAutoFiller();
+  //   }
+  // }, []);
 
   const isInitialProcessed = useRef(false);
 

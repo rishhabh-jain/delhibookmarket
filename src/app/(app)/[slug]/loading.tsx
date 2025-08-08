@@ -1,7 +1,7 @@
 import Header from "@/components/header-footer/Header";
 import Footer from "@/components/home/Footer";
 
-export default function ProductLoadingSkeleton() {
+export default function Loading() {
   return (
     <>
       <Header />

@@ -63,7 +63,11 @@ async function fetchProducts(
     sort: sortBy,
   });
 
-  const response = await fetch(`/api/get-products-by-category?${params}`);
+  const response = await fetch(`/api/get-products-by-category?${params}`, {
+    headers: {
+      "Cache-Control": "max-age=259200", // 3 days in seconds
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch products: ${response.status}`);

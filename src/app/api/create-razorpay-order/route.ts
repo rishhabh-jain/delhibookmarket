@@ -8,14 +8,34 @@ const razorpay = new Razorpay({
 });
 
 export async function POST(req: Request) {
-  const { amountInRupees, wooOrderId } = await req.json();
+  try {
+    const { amountInRupees, wooOrderId } = await req.json();
 
-  const order = await razorpay.orders.create({
-    amount: amountInRupees * 100, // in paise
-    currency: "INR",
-    receipt: `woo_${wooOrderId}`, // helpful when linking later
-    payment_capture: true,
-  });
+    if (!amountInRupees || !wooOrderId) {
+      return NextResponse.json(
+        { error: "amountInRupees and wooOrderId are required" },
+        { status: 400 }
+      );
+    }
 
-  return NextResponse.json(order);
+    const order = await razorpay.orders.create({
+      amount: Math.round(amountInRupees * 100), // in paise
+      currency: "INR",
+      receipt: `woo_${wooOrderId}`, // helpful for manual matching
+      payment_capture: true, // auto-capture
+      notes: {
+        woo_order_id: wooOrderId.toString(), // 🔥 stored for webhook
+        source: "delhibookmarket", // optional, for tracking
+      },
+    });
+
+    return NextResponse.json(order);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error("Error creating Razorpay order:", error);
+    return NextResponse.json(
+      { error: "Failed to create Razorpay order" },
+      { status: 500 }
+    );
+  }
 }

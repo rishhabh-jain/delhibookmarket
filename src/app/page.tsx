@@ -108,7 +108,7 @@ export default function HomeClient() {
         <Header />
 
         {/* Flash Sale Banner */}
-        <Link href="/product-category/self-help">
+        <Link href="/shop?max-price=100">
           <section className="container lg:px-6 mx-auto lg:my-4 ">
             <div className="relative overflow-hidden bg-gradient-to-r lg:rounded-xl lg:py-12 from-red-600 via-red-500 to-red-600 border-0 shadow-2xl py-4">
               <CardContent className="px-6 py-4">

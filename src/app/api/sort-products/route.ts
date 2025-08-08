@@ -12,20 +12,16 @@ const api = axios.create({
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const categoryId = searchParams.get("c");
+
+    const categoryId = searchParams.get("c"); // optional now
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20"); // Changed from 9 to 20
+    const limit = parseInt(searchParams.get("limit") || "20");
     const search = searchParams.get("search") || "";
-    const sort = searchParams.get("sort") || "name";
+    const sort = searchParams.get("sort") || "popularity";
+    const minPrice = searchParams.get("min-price");
+    const maxPrice = searchParams.get("max-price");
 
-    if (!categoryId) {
-      return NextResponse.json(
-        { error: "Category ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Map sort parameter to WooCommerce orderby values
+    // Sort mapping
     let orderby = "popularity";
     let order = "desc";
 
@@ -51,47 +47,50 @@ export async function GET(request: NextRequest) {
         order = "desc";
     }
 
-    // Build API parameters
+    // Build params dynamically
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const apiParams: any = {
-      category: categoryId === "all" ? undefined : categoryId,
-      page: page,
+    const apiParams: Record<string, any> = {
+      page,
       per_page: limit,
-      orderby: "popularity",
-      order: "desc",
+      orderby,
+      order,
       stock_status: "instock",
       _fields: "id,name,permalink,price,images,stock_quantity,slug,total_sales",
     };
 
-    // Add search parameter if provided
+    // Optional filters
+    if (categoryId && categoryId !== "all") {
+      apiParams.category = categoryId;
+    }
     if (search.trim()) {
       apiParams.search = search.trim();
     }
+    if (minPrice) {
+      apiParams.min_price = minPrice;
+    }
+    if (maxPrice) {
+      apiParams.max_price = maxPrice;
+    }
 
-    const res = await api.get("products", {
-      params: apiParams,
-    });
+    const res = await api.get("products", { params: apiParams });
 
-    // Get total count from headers
     const totalCount = parseInt(res.headers["x-wp-total"] || "0");
     const totalPages = parseInt(res.headers["x-wp-totalpages"] || "1");
-    const hasNextPage = page < totalPages;
-    const nextPage = hasNextPage ? page + 1 : undefined;
 
-    return new NextResponse(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         products: res.data,
-        hasNextPage,
-        nextPage,
+        hasNextPage: page < totalPages,
+        nextPage: page < totalPages ? page + 1 : undefined,
         totalCount,
         currentPage: page,
         totalPages,
-      }),
+      },
       {
         status: 200,
         headers: {
-          "Cache-Control": "s-maxage=259200, stale-while-revalidate=59",
-          "Content-Type": "application/json",
+          "Cache-Control":
+            "public, max-age=259200, stale-while-revalidate=86400", // 3 days cache, 1 day stale
         },
       }
     );

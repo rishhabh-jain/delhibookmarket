@@ -46,13 +46,46 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("✅ Payment signature verified successfully", {
+    console.log("✅ Payment signature verified successfully by NOT WEBHOOK", {
       wooOrderId,
       razorpay_payment_id,
     });
 
+    // 🛑 Step 1: Check existing WooCommerce order before updating
+    let existingOrder;
     try {
-      // ✅ Update WooCommerce order with more details
+      const orderRes = await axios.get(
+        `https://shop.delhibookmarket.com/wp-json/wc/v3/orders/${wooOrderId}`,
+        {
+          auth: {
+            username: process.env.WC_CONSUMER_KEY!,
+            password: process.env.WC_CONSUMER_SECRET!,
+          },
+        }
+      );
+      existingOrder = orderRes.data;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (fetchError: any) {
+      console.error("⚠️ Could not fetch existing WooCommerce order:", {
+        wooOrderId,
+        error: fetchError.message,
+      });
+    }
+
+    // If order is already in a "paid" state, skip update
+    const paidStatuses = ["processing", "completed"];
+    if (existingOrder && paidStatuses.includes(existingOrder.status)) {
+      console.log(
+        `ℹ️ Order ${wooOrderId} already updated by webhook (status: ${existingOrder.status}). Skipping update.`
+      );
+      return NextResponse.json({
+        status: "skipped",
+        reason: "Order already updated by webhook",
+      });
+    }
+
+    // ✅ Step 2: Update WooCommerce order if not paid
+    try {
       const updateResponse = await axios.put(
         `https://shop.delhibookmarket.com/wp-json/wc/v3/orders/${wooOrderId}`,
         {
@@ -60,20 +93,11 @@ export async function POST(req: Request) {
           set_paid: true,
           payment_method: "razorpay",
           payment_method_title: "Razorpay",
-          transaction_id: razorpay_payment_id, // Store Razorpay payment ID
+          transaction_id: razorpay_payment_id,
           meta_data: [
-            {
-              key: "razorpay_order_id",
-              value: razorpay_order_id,
-            },
-            {
-              key: "razorpay_payment_id",
-              value: razorpay_payment_id,
-            },
-            {
-              key: "payment_verified_at",
-              value: new Date().toISOString(),
-            },
+            { key: "razorpay_order_id", value: razorpay_order_id },
+            { key: "razorpay_payment_id", value: razorpay_payment_id },
+            { key: "payment_verified_at", value: new Date().toISOString() },
           ],
         },
         {
@@ -84,7 +108,7 @@ export async function POST(req: Request) {
         }
       );
 
-      console.log("✅ WooCommerce order updated successfully", {
+      console.log("✅ WooCommerce order updated successfully by NOT WEBHOOK", {
         wooOrderId,
         status: updateResponse.status,
       });
@@ -100,8 +124,6 @@ export async function POST(req: Request) {
         error: wooError.response?.data || wooError.message,
       });
 
-      // ⚠️ Payment was verified but order update failed
-      // You might want to retry this or handle it specially
       return NextResponse.json(
         {
           status: "partial_success",

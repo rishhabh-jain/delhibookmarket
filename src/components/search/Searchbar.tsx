@@ -8,7 +8,7 @@ import React, {
 import { Loader2, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
+import Link from "next/link";
 // Type definitions
 interface ProductImage {
   id?: number;
@@ -627,61 +627,63 @@ const AdvancedSearchBar: React.FC = () => {
                   )} */}
                 </div>
                 {displayedResults.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => handleResultClick(product)}
-                    className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleResultClick(product);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Image
-                        src={product.images[0]?.src || ""}
-                        width={48}
-                        height={48}
-                        alt={product.images[0]?.alt || product.name}
-                        className="w-12 h-12 object-cover rounded border flex-shrink-0"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src =
-                            "https://via.placeholder.com/48x48/e5e5e5/999999?text=Book";
-                        }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-medium text-gray-900 truncate">
-                            {product.name.replace(/^Buy\s+/i, "")}
-                          </h3>
+                  <Link href={`/${product.slug}`} key={product.id}>
+                    <div
+                      onClick={() => handleResultClick(product)}
+                      className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleResultClick(product);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Image
+                          src={product.images[0]?.src || ""}
+                          width={48}
+                          height={48}
+                          alt={product.images[0]?.alt || product.name}
+                          className="w-12 h-12 object-cover rounded border flex-shrink-0"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src =
+                              "https://via.placeholder.com/48x48/e5e5e5/999999?text=Book";
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-medium text-gray-900 truncate">
+                              {product.name.replace(/^Buy\s+/i, "")}
+                            </h3>
 
-                          {/* {product.relevance.isComboProduct && (
+                            {/* {product.relevance.isComboProduct && (
                             <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
                               Set
                             </span>
                           )} */}
-                          {/* {!product.relevance.isComboProduct && (
+                            {/* {!product.relevance.isComboProduct && (
                             <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex-shrink-0">
                               Single
                             </span>
                           )} */}
-                          {/* Book Format Badge */}
-                          <span
-                            className={getFormatBadgeStyle(product.bookFormat!)}
-                          >
-                            {getFormatDisplayText(product.bookFormat!)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-lg font-semibold text-green-600">
-                            ₹{parseInt(product.price).toLocaleString()}
-                          </p>
-                          <div className="flex items-center space-x-2 text-sm text-gray-500">
-                            {/* <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            {/* Book Format Badge */}
+                            <span
+                              className={getFormatBadgeStyle(
+                                product.bookFormat!
+                              )}
+                            >
+                              {getFormatDisplayText(product.bookFormat!)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-lg font-semibold text-green-600">
+                              ₹{parseInt(product.price).toLocaleString()}
+                            </p>
+                            <div className="flex items-center space-x-2 text-sm text-gray-500">
+                              {/* <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                               Match:{" "}
                               {Math.round(
                                 Math.max(
@@ -691,22 +693,23 @@ const AdvancedSearchBar: React.FC = () => {
                               )}
                               %
                             </span> */}
-                            {product.relevance.authorMatchScore >
-                              product.relevance.characterMatchScore && (
-                              <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">
-                                Author
-                              </span>
-                            )}
-                            {(product.total_sales || 0) > 500 && (
-                              <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
-                                Popular
-                              </span>
-                            )}
+                              {product.relevance.authorMatchScore >
+                                product.relevance.characterMatchScore && (
+                                <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">
+                                  Author
+                                </span>
+                              )}
+                              {(product.total_sales || 0) > 500 && (
+                                <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
+                                  Popular
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
 
                 {hasMoreResults && (
