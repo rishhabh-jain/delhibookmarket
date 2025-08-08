@@ -51,7 +51,7 @@ export default async function ShopPage({
 
   try {
     const res = await fetch(
-      `${"http://localhost:3000"}/api/sort-products?${queryParams.toString()}`,
+      `https://delhibookmarket.com/api/sort-products?${queryParams.toString()}`,
       {
         next: { revalidate: 259200 }, // ✅ cache for 3 days
       }
