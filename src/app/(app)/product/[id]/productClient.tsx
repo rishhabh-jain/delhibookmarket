@@ -331,7 +331,7 @@ export default function ProductClient({ product }: ProductClientProps) {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Product Image  cccccccc*/}
+          {/* Product Image  */}
           <div className="lg:col-span-1">
             <div className="sticky top-4">
               <Image
@@ -538,7 +538,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                             ? "Checking stock..."
                             : !isInStock && stockRef.current == "cached"
                             ? "Add to basket"
-                            : "Out of stock"}
+                            : "Add to basket"}
                         </span>
                       </>
                     )}
@@ -569,7 +569,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                   ) : !isInStock && stockRef.current == "cached" ? (
                     "Buy Now"
                   ) : (
-                    "Out of stock"
+                    "Buy Now"
                   )}
                 </Button>
 
