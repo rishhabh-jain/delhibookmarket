@@ -39,7 +39,7 @@ export default function RelatedProducts({ productId, title }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  // Fetch products.json from public folderr
+  // Fetch products.json from public folderrr
   useEffect(() => {
     fetch("/data/products.json")
       .then((res) => res.json())
