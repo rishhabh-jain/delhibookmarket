@@ -348,7 +348,7 @@ export default function ProductClient({ product }: ProductClientProps) {
             </div>
           </div>
 
-          {/* Product Details */}
+          {/* Product Details C */}
           <div className="lg:col-span-2 space-y-4">
             <div>
               <h1 className="text-xl font-bold text-gray-900 mb-1">
