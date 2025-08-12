@@ -29,6 +29,7 @@ import { useAlert } from "@/context/AlertContext";
 import CountDownTimer from "@/components/product/CountDownTimer";
 import Image from "next/image";
 import axios from "axios";
+import RelatedProducts from "@/components/RelatedProducts";
 
 export interface WooProduct {
   id: number;
@@ -98,6 +99,8 @@ export default function ProductClient({ product }: ProductClientProps) {
   const currentProduct = product;
   const { addWooProduct } = useCart();
 
+  const stockRef = useRef("cached");
+
   const checkStockPromiseRef = useRef<Promise<void> | null>(null);
 
   const checkStock = async () => {
@@ -118,6 +121,7 @@ export default function ProductClient({ product }: ProductClientProps) {
         stock_quantity: response.stock_quantity,
         stock_status: response.stock_status,
       });
+      stockRef.current = "fresh";
     } catch (error) {
       console.log("Error checking stock:", error);
       // Set fallback stock data from product prop
@@ -292,6 +296,7 @@ export default function ProductClient({ product }: ProductClientProps) {
   // Get current stock information
   const getCurrentStock = () => {
     if (stockStatus) {
+      stockRef.current = "fresh";
       return {
         quantity: stockStatus.stock_quantity,
         status: stockStatus.stock_status,
@@ -301,6 +306,7 @@ export default function ProductClient({ product }: ProductClientProps) {
       };
     }
     // Fallback to product data
+    stockRef.current = "cached";
     return {
       quantity: currentProduct.stock_quantity,
       status: currentProduct.stock_status,
@@ -353,25 +359,33 @@ export default function ProductClient({ product }: ProductClientProps) {
               </p>
             </div>
 
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2 text-sm">
               <div className="flex items-center gap-1">
-                {stockCheckLoading ? (
-                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                ) : isInStock ? (
-                  <Check className="w-4 h-4 text-green-600" />
+                {!isInStock && stockRef.current === "cached" ? (
+                  <></>
                 ) : (
-                  <X className="w-4 h-4 text-red-600" />
-                )}
+                  <>
+                    {stockCheckLoading ? (
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    ) : isInStock ? (
+                      <Check className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-600" />
+                    )}
 
-                <span
-                  className={`${isInStock ? "text-green-600" : "text-red-600"}`}
-                >
-                  {stockCheckLoading
-                    ? "Checking availability..."
-                    : isInStock
-                    ? "Available"
-                    : "Out of stock"}
-                </span>
+                    <span
+                      className={`${
+                        isInStock ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {stockCheckLoading
+                        ? "Checking availability..."
+                        : isInStock
+                        ? "Available"
+                        : "Out of stock"}
+                    </span>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-gray-700">Goodread ratings</span>
@@ -432,18 +446,26 @@ export default function ProductClient({ product }: ProductClientProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
-                  {stockCheckLoading ? (
-                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                  ) : isInStock ? (
-                    <Check className="w-4 h-4 text-green-600" />
+                  {!isInStock && stockRef.current === "cached" ? (
+                    <></>
                   ) : (
-                    <X className="w-4 h-4 text-red-600" />
+                    <>
+                      {stockCheckLoading ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                      ) : isInStock ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-600" />
+                      )}
+                      <span
+                        className={`text-${isInStock ? "green" : "red"}-600`}
+                      >
+                        {stockCheckLoading
+                          ? "Checking stock..."
+                          : `${stockQuantity} in stock`}
+                      </span>
+                    </>
                   )}
-                  <span className={`text-${isInStock ? "green" : "red"}-600`}>
-                    {stockCheckLoading
-                      ? "Checking stock..."
-                      : `${stockQuantity} in stock`}
-                  </span>
                 </div>
 
                 <div>
@@ -489,7 +511,11 @@ export default function ProductClient({ product }: ProductClientProps) {
                       : "bg-transparent hover:bg-gray-50"
                   }`}
                   onClick={handleAddToCart}
-                  disabled={isAddingToCart || !isInStock || stockCheckLoading}
+                  disabled={
+                    isAddingToCart ||
+                    (!isInStock && stockRef.current === "fresh") ||
+                    stockCheckLoading
+                  }
                 >
                   <div className="flex items-center justify-center gap-2 relative z-10">
                     {isAddingToCart ? (
@@ -510,7 +536,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                         <span>
                           {stockCheckLoading
                             ? "Checking stock..."
-                            : isInStock
+                            : !isInStock && stockRef.current == "cached"
                             ? "Add to basket"
                             : "Out of stock"}
                         </span>
@@ -527,7 +553,11 @@ export default function ProductClient({ product }: ProductClientProps) {
                 <Button
                   onClick={handleDirectCheckout}
                   className="w-full bg-black hover:bg-gray-800 text-white text-sm h-9 transition-colors duration-200"
-                  disabled={isBuyingNow || !isInStock || stockCheckLoading}
+                  disabled={
+                    isBuyingNow ||
+                    (!isInStock && stockRef.current === "fresh") ||
+                    stockCheckLoading
+                  }
                 >
                   {isBuyingNow ? (
                     <>
@@ -536,7 +566,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                     </>
                   ) : stockCheckLoading ? (
                     "Checking stock..."
-                  ) : isInStock ? (
+                  ) : !isInStock && stockRef.current == "cached" ? (
                     "Buy Now"
                   ) : (
                     "Out of stock"
@@ -552,6 +582,11 @@ export default function ProductClient({ product }: ProductClientProps) {
                 )}
               </div>
             </div>
+
+            <RelatedProducts
+              productId={product.id.toString()}
+              title={product.name}
+            />
 
             {/* Countdown Timer */}
             <CountDownTimer
