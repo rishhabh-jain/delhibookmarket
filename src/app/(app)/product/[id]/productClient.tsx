@@ -331,7 +331,7 @@ export default function ProductClient({ product }: ProductClientProps) {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Product Image  ccccc*/}
+          {/* Product Image  cccccccc*/}
           <div className="lg:col-span-1">
             <div className="sticky top-4">
               <Image
