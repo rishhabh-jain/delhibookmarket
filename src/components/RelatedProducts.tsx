@@ -47,7 +47,7 @@ export default function RelatedProducts({ productId, title }: Props) {
       .catch(() => setError("Failed to load product data"));
   }, []);
 
-  // Fetch related products from your APII
+  // Fetch related products from your API
   useEffect(() => {
     async function fetchRelated() {
       setLoading(true);
