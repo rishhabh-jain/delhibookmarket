@@ -1,12 +1,13 @@
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import FooterSEO from "../header-footer/FooterSEO";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300">
-      {/* Join Community Section */}
-      <a href="https://t.me/bookclubone">
+    <footer className="">
+      <div className="bg-gray-900 text-gray-300">
+        <a href="https://t.me/bookclubone">
         <div className="bg-gray-800 py-12 text-center">
           <h2 className="text-teal-400 text-xl font-semibold tracking-wider mb-6">
             JOIN THE COMMUNITY
@@ -149,6 +150,11 @@ export default function Footer() {
           </a>
         </div>
       </div>
+      </div>
+      {/* Join Community Section */}
+      
+
+      <FooterSEO/>
     </footer>
   );
 }

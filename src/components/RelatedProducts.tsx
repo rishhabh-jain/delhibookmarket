@@ -260,7 +260,7 @@ export default function RelatedProducts({ productId, title }: Props) {
                   product.permalink?.split("/").filter(Boolean).pop() ?? "/"
                 }
                 key={product.product_id}
-                className="flex-none w-[280px] sm:w-[300px] md:w-[280px] lg:w-[260px] xl:w-[240px] 2xl:w-[220px] bg-white rounded-xl border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden"
+                className="flex-none w-[50%] sm:w-[300px] md:w-[280px] lg:w-[260px] xl:w-[240px] 2xl:w-[220px] bg-white rounded-xl border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden"
               >
                 {product.images && product.images.length > 0 && (
                   <div className="relative overflow-hidden bg-gray-50">
