@@ -126,8 +126,7 @@ export default function CartClient() {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-3 sm:space-y-4">
               {items.map((item) => {
-                const url = "/ikigai-paperback-by-hector-garcia/";
-                const slug = url.replace(/^\/|\/$/g, "");
+                const slug = item.permalink.split("/").filter(Boolean).pop();
                 return (
                   <Card key={item.id} className="overflow-hidden">
                     <CardContent className="p-3 sm:p-6">
@@ -152,7 +151,7 @@ export default function CartClient() {
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start mb-2">
                               <Link
-                                href={item.permalink}
+                                href={`/${slug}`}
                                 className="font-medium text-sm leading-tight hover:text-primary transition-colors line-clamp-2"
                               >
                                 {item.name}
@@ -239,7 +238,7 @@ export default function CartClient() {
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start mb-2">
                             <Link
-                              href={item.permalink}
+                              href={`/${slug}`}
                               className="font-semibold text-lg hover:text-primary transition-colors line-clamp-2"
                             >
                               {item.name}

@@ -156,11 +156,12 @@ export default function CheckoutPage() {
   const [, setIsCheckingStock] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+
+  //COUPON STATES
+  const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [appliedCouponProduct, setAppliedCouponProduct] =
     useState<WooProduct | null>(null);
-
-  const [couponInput, setCouponInput] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -288,6 +289,8 @@ export default function CheckoutPage() {
         // There are stock issues - show modal
         setOutOfStockList(data.out_of_stock_list);
         setIsModalOpen(true);
+        setAppliedCoupon(null);
+        setAppliedCouponProduct(null);
         return false; // Indicate stock issues
       } else {
         // All items are in stock - proceed with checkout
@@ -318,6 +321,15 @@ export default function CheckoutPage() {
       document.body.appendChild(script);
     });
   }, []);
+
+  interface LineItem {
+    product_id: number;
+    quantity: number;
+    total?: string;
+    subtotal?: string;
+    total_tax?: string;
+    subtotal_tax?: string;
+  }
 
   const handleCheckout = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
@@ -356,10 +368,26 @@ export default function CheckoutPage() {
         country: data.country,
       };
 
-      const LINE_ITEMS = items.map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity,
-      }));
+      const LINE_ITEMS = items.map((item) => {
+        const lineItem: LineItem = {
+          product_id: item.id,
+          quantity: item.quantity,
+        };
+
+        if (item.isPromotional) {
+          console.log("FREE ITEM", item.name);
+          lineItem.total = "0";
+          lineItem.subtotal = "0";
+          lineItem.subtotal_tax = "0";
+          lineItem.total_tax = "0";
+        }
+
+        console.log(lineItem);
+
+        return lineItem;
+      });
+
+      console.log(LINE_ITEMS);
 
       const IS_SHIPPING_FREE = appliedCoupon?.code === "freeshipping";
 
@@ -471,6 +499,21 @@ export default function CheckoutPage() {
     }
   };
 
+  const removeCouponAndProduct = useCallback(() => {
+    // Batch state updates to avoid race conditions
+    const currentAppliedProduct = appliedCouponProduct;
+
+    // Clear states first
+    setAppliedCoupon(null);
+    setAppliedCouponProduct(null);
+    setCouponInput("");
+
+    // Then remove the product
+    if (currentAppliedProduct) {
+      removeItem(currentAppliedProduct.id);
+    }
+  }, [appliedCouponProduct, removeItem]);
+
   const applyCoupon = async (couponCode: string) => {
     const coupon = getCoupon(couponCode.toLowerCase());
 
@@ -546,7 +589,7 @@ export default function CheckoutPage() {
 
     if (coupon.code == "summersale") {
       //DO 10 PERCENT DISCOUNT OF TOTAL PRICE
-      const discountAmount = Math.round((finalTotal * 10) / 100);
+      const discountAmount = Math.round((total * 10) / 100);
       setAppliedCoupon({ ...coupon, amount: discountAmount });
       return;
     }
@@ -685,10 +728,7 @@ export default function CheckoutPage() {
                                 size="sm"
                                 className="h-8 w-8 p-0 hover:bg-gray-100"
                                 onClick={() => {
-                                  setAppliedCoupon(null);
-                                  if (appliedCouponProduct) {
-                                    removeItem(appliedCouponProduct.id);
-                                  }
+                                  removeCouponAndProduct();
                                   updateQuantity(
                                     item.id,
                                     Math.max(1, item.quantity - 1)
@@ -706,10 +746,7 @@ export default function CheckoutPage() {
                                 size="sm"
                                 className="h-8 w-8 p-0 hover:bg-gray-100"
                                 onClick={() => {
-                                  setAppliedCoupon(null);
-                                  if (appliedCouponProduct) {
-                                    removeItem(appliedCouponProduct.id);
-                                  }
+                                  removeCouponAndProduct();
                                   updateQuantity(item.id, item.quantity + 1);
                                 }}
                                 disabled={!canAddToCart(item.id, 1)}
@@ -732,10 +769,7 @@ export default function CheckoutPage() {
                                   });
                                   return;
                                 }
-                                setAppliedCoupon(null);
-                                if (appliedCouponProduct) {
-                                  removeItem(appliedCouponProduct.id);
-                                }
+                                removeCouponAndProduct();
                                 removeItem(item.id);
                               }}
                             >
@@ -1197,10 +1231,7 @@ export default function CheckoutPage() {
                             size="sm"
                             className="h-8 w-8 p-0 hover:bg-gray-100"
                             onClick={() => {
-                              setAppliedCoupon(null);
-                              if (appliedCouponProduct) {
-                                removeItem(appliedCouponProduct.id);
-                              }
+                              removeCouponAndProduct()
                               updateQuantity(
                                 item.id,
                                 Math.max(1, item.quantity - 1)
@@ -1218,10 +1249,7 @@ export default function CheckoutPage() {
                             size="sm"
                             className="h-8 w-8 p-0 hover:bg-gray-100"
                             onClick={() => {
-                              setAppliedCoupon(null);
-                              if (appliedCouponProduct) {
-                                removeItem(appliedCouponProduct.id);
-                              }
+                              removeCouponAndProduct()
                               updateQuantity(item.id, item.quantity + 1);
                             }}
                             disabled={!canAddToCart(item.id, 1)}
@@ -1243,10 +1271,7 @@ export default function CheckoutPage() {
                               });
                               return;
                             }
-                            setAppliedCoupon(null);
-                            if (appliedCouponProduct) {
-                              removeItem(appliedCouponProduct.id);
-                            }
+                           removeCouponAndProduct()
                             removeItem(item.id);
                           }}
                         >

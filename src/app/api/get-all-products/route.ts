@@ -2,14 +2,6 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
 
-const api = axios.create({
-  baseURL: "https://shop.delhibookmarket.com/wp-json/wc/v3/",
-  auth: {
-    username: process.env.WC_CONSUMER_KEY!,
-    password: process.env.WC_CONSUMER_SECRET!,
-  },
-});
-
 export async function GET() {
   try {
     let page = 1;
@@ -19,15 +11,21 @@ export async function GET() {
     let moreData = true;
 
     while (moreData) {
-      const res = await api.get("products", {
+      const wpRes = await axios.get("https://shop.delhibookmarket.com/wp-json/wp/v2/product", {
         params: {
           per_page: perPage,
           page,
-          _fields: "id,name,permalink,price,images,slug,total_sales",
+          status: "any",
+             catalog_visibility: "any", // Include all visibility settings
+          type: "any", // Include all product types
+        },
+        auth: {
+          username: process.env.WC_CONSUMER_KEY!,
+          password: process.env.WC_CONSUMER_SECRET!,
         },
       });
 
-      const products = res.data;
+      const products = wpRes.data;
       allProducts.push(...products);
 
       if (products.length < perPage) {
