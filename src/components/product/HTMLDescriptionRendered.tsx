@@ -1,4 +1,5 @@
 "use client";
+import { ProductPage } from "@/app/types";
 import { useMemo } from "react";
 
 interface HtmlDescriptionRendererProps {
@@ -6,48 +7,7 @@ interface HtmlDescriptionRendererProps {
   title?: string;
   className?: string;
 }
-interface WooProduct {
-  id: number;
-  name: string;
-  permalink: string;
-  price: string;
-  regular_price: string;
-  sale_price: string;
-  description: string;
-  short_description: string;
-  images: {
-    id: number;
-    date_created: string;
-    date_created_gmt: string;
-    date_modified: string;
-    date_modified_gmt: string;
-    src: string;
-    name: string;
-    alt: string;
-  }[];
-  stock_quantity: number;
-  categories: {
-    id: number;
-    name: string;
-    slug: string;
-  }[];
-  tags: string[];
-  attributes: string[];
-  average_rating: string;
-  rating_count: number;
-  stock_status: "instock" | "outofstock" | "onbackorder";
-  _links: {
-    self: {
-      href: string;
-      targetHints: {
-        allow: ("GET" | "POST" | "PUT" | "PATCH" | "DELETE")[];
-      };
-    }[];
-    collection: {
-      href: string;
-    }[];
-  };
-}
+
 
 export default function HtmlDescriptionRenderer({
   htmlContent,
@@ -123,14 +83,14 @@ export default function HtmlDescriptionRenderer({
 }
 
 // Usage example component
-export function ProductDescription({ product }: { product: WooProduct }) {
+export function ProductDescription({ product ,className }: { product: ProductPage, className?:string }) {
   const description = product?.description || product?.short_description;
 
   return (
     <HtmlDescriptionRenderer
       htmlContent={description}
       title="Description:"
-      className="mb-8"
+      className={`mb-8 ${className}`}
     />
   );
 }

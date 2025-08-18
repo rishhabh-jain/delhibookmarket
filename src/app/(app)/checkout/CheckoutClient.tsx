@@ -1,18 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import {
-  ChevronDown,
-  ShoppingCart,
-  Lock,
-  Loader2,
-  CheckCircle,
-  Minus,
-  Plus,
-  X,
-} from "lucide-react";
+import { Lock, Loader2, CheckCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,13 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { useCart, WooProduct } from "@/context/CartContext";
+
+import { useCart } from "@/context/CartContext";
 import axios from "axios";
 import { Controller, useForm } from "react-hook-form";
 import { useDebounce } from "@uidotdev/usehooks";
@@ -52,8 +37,16 @@ import {
   getCoupon,
 } from "@/app/data/PROMOCODES";
 import CheckoutCoupons from "@/components/ShowCoupon";
+import { indianStates } from "./IndianStates";
+import {
 
-// Mock useCart hook - replace with your actual implementation
+  LineItem,
+  ProductPage,
+  PromoCode,
+} from "@/app/types";
+import MobileOrderSummary from "./order-summary/MobileOrderSummary";
+import DesktopOrderSummary from "./order-summary/DesktopOrderSummary";
+import { useTest } from "@/hooks/useTest";
 
 interface RazorpayOptions {
   key: string;
@@ -79,7 +72,7 @@ declare global {
   }
 }
 
-interface StockIssueItem {
+interface BaseStockIssueItem {
   product_id: number;
   product_name: string;
   requested_quantity: number;
@@ -87,49 +80,16 @@ interface StockIssueItem {
   out_of_stock_quantity: number;
 }
 
-interface StockCheckResponse {
-  out_of_stock_list: StockIssueItem[];
-}
-type CheckoutFormData = z.infer<typeof checkoutSchema>; // or define it manually if not using zod
+type StockIssueItem =
+  | (BaseStockIssueItem & {
+      type: "product";
+    })
+  | (BaseStockIssueItem & {
+      type: "combo";
+      combo_id: number;
+    });
 
-const indianStates = [
-  "Andhra Pradesh",
-  "Arunachal Pradesh",
-  "Assam",
-  "Bihar",
-  "Chhattisgarh",
-  "Goa",
-  "Gujarat",
-  "Haryana",
-  "Himachal Pradesh",
-  "Jharkhand",
-  "Karnataka",
-  "Kerala",
-  "Madhya Pradesh",
-  "Maharashtra",
-  "Manipur",
-  "Meghalaya",
-  "Mizoram",
-  "Nagaland",
-  "Odisha",
-  "Punjab",
-  "Rajasthan",
-  "Sikkim",
-  "Tamil Nadu",
-  "Telangana",
-  "Tripura",
-  "Uttar Pradesh",
-  "Uttarakhand",
-  "West Bengal",
-  "Andaman and Nicobar Islands",
-  "Chandigarh",
-  "Dadra and Nagar Haveli and Daman and Diu",
-  "Delhi",
-  "Jammu and Kashmir",
-  "Ladakh",
-  "Lakshadweep",
-  "Puducherry",
-];
+type CheckoutFormData = z.infer<typeof checkoutSchema>; // or define it manually if not using zod
 
 export default function CheckoutPage() {
   const {
@@ -144,6 +104,8 @@ export default function CheckoutPage() {
   const { showToast } = useAlert();
 
   const router = useRouter();
+  const [showComboEditor, setShowComboEditor] = useState(false);
+
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [createAccount, setCreateAccount] = useState(false);
@@ -159,9 +121,9 @@ export default function CheckoutPage() {
 
   //COUPON STATES
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<PromoCode | null>(null);
   const [appliedCouponProduct, setAppliedCouponProduct] =
-    useState<WooProduct | null>(null);
+    useState<ProductPage | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -180,7 +142,9 @@ export default function CheckoutPage() {
   const shippingCost = appliedCoupon?.code === "freeshipping" ? 0 : 39;
   const COD_CHARGES = paymentMethod === "cod" ? 50 : 0;
   const COUPON_DISCOUNT = appliedCoupon ? Number(appliedCoupon.amount) : 0;
-  const finalTotal = total + shippingCost + COD_CHARGES - COUPON_DISCOUNT;
+  const finalTotal = Math.round(
+    total + shippingCost + COD_CHARGES - COUPON_DISCOUNT
+  );
   const debouncedSearchTerm = useDebounce(emailValue, 1000);
 
   const isValidEmail = (email: string) => {
@@ -271,19 +235,36 @@ export default function CheckoutPage() {
 
     setIsCheckingStock(true);
     try {
-      const product_list = items.map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity,
-      }));
+      const product_list = items.flatMap((item) => {
+        // Regular product
+        if (item.type === "product") {
+          const lineItem = {
+            product_id: item.id,
+            quantity: item.quantity,
+            type: "product",
+          };
 
-      const { data }: { data: StockCheckResponse } = await axios.post(
-        "/api/check-product-stock",
-        {
-          product_list,
+          return [lineItem];
         }
-      );
 
-      console.log("Stock check result:", data);
+        // Combo → break into its products
+        if (item.type === "combo") {
+          return item.products.map((product) => ({
+            product_id: product.id,
+            quantity: item.quantity, // combo qty = each child qty
+            type: "combo",
+            combo_id: item.id,
+          }));
+        }
+
+        return [];
+      });
+
+      console.log("Checking stock for products:", product_list);
+
+      const { data } = await axios.post("/api/check-product-stock", {
+        product_list,
+      });
 
       if (data.out_of_stock_list.length > 0) {
         // There are stock issues - show modal
@@ -322,15 +303,6 @@ export default function CheckoutPage() {
     });
   }, []);
 
-  interface LineItem {
-    product_id: number;
-    quantity: number;
-    total?: string;
-    subtotal?: string;
-    total_tax?: string;
-    subtotal_tax?: string;
-  }
-
   const handleCheckout = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
     try {
@@ -368,23 +340,38 @@ export default function CheckoutPage() {
         country: data.country,
       };
 
-      const LINE_ITEMS = items.map((item) => {
-        const lineItem: LineItem = {
-          product_id: item.id,
-          quantity: item.quantity,
-        };
+      const LINE_ITEMS = items.flatMap((item) => {
+        // Regular product
+        if (item.type === "product") {
+          const lineItem: LineItem = {
+            product_id: item.id,
+            quantity: item.quantity,
+          };
 
-        if (item.isPromotional) {
-          console.log("FREE ITEM", item.name);
-          lineItem.total = "0";
-          lineItem.subtotal = "0";
-          lineItem.subtotal_tax = "0";
-          lineItem.total_tax = "0";
+          if (item.isPromotional) {
+            console.log("FREE ITEM", item.name);
+            lineItem.total = "0";
+            lineItem.subtotal = "0";
+            lineItem.subtotal_tax = "0";
+            lineItem.total_tax = "0";
+          }
+
+          return [lineItem];
         }
 
-        console.log(lineItem);
+        // Combo → break into its products
+        if (item.type === "combo") {
+          return item.products.map((product) => ({
+            product_id: product.id,
+            quantity: item.quantity, // combo qty = each child qty
+            meta_data: [
+              { key: "combo_id", value: item.id },
+              { key: "combo_name", value: item.name },
+            ],
+          }));
+        }
 
-        return lineItem;
+        return [];
       });
 
       console.log(LINE_ITEMS);
@@ -406,6 +393,7 @@ export default function CheckoutPage() {
             },
           ]
         : [];
+
 
       // 1️⃣ Create WooCommerce order
       const wooRes = await axios.post("/api/create-woo-order", {
@@ -617,24 +605,7 @@ export default function CheckoutPage() {
     }
   }, [createAccount]);
 
-  // const testAutoFiller = () => {
-  //   reset({
-  //     email: "mythcihuman28@gmail.com",
-  //     first_name: "Sanchit Jain",
-  //     last_name: "TEST ORDER",
-  //     address_1: "A1-154,Sushant lok 2 ,Sector 55 , Gurgaon",
-  //     address_2: "Near orchids International school , gurgaon",
-  //     postcode: "122011",
-  //     city: "Gurgaon",
-  //     phone: "9650296375",
-  //   });
-  // };
-
-  // useEffect(() => {
-  //   if (process.env.NODE_ENV === "development") {
-  //     testAutoFiller();
-  //   }
-  // }, []);
+  useTest(reset)
 
   const isInitialProcessed = useRef(false);
 
@@ -655,185 +626,29 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
-              <span className="text-white font-bold text-sm">D</span>
-            </div>
-            <span className="font-semibold text-lg">delhi book market</span>
-          </Link>
-
-          <Link
-            href="/cart"
-            className="text-sm text-blue-600 hover:underline font-medium"
-          >
-            ← Back to Cart
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Mobile Order Summary */}
-        <div className="lg:hidden mb-6">
-          <Collapsible
-            open={showOrderSummary}
-            onOpenChange={setShowOrderSummary}
-          >
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-between h-12 text-base bg-transparent"
-              >
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" />
-                  Show Order Summary
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">
-                    ₹ {finalTotal.toFixed(2)}
-                  </span>
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-4">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3">
-                        <div className="relative">
-                          <Image
-                            src={item.image || "/placeholder.svg"}
-                            alt={item.name}
-                            width={45}
-                            height={60}
-                            className="rounded border"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">
-                            {item.name}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            ₹ {item.price.toFixed(2)}
-                          </p>
 
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex items-center border rounded">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
-                                onClick={() => {
-                                  removeCouponAndProduct();
-                                  updateQuantity(
-                                    item.id,
-                                    Math.max(1, item.quantity - 1)
-                                  );
-                                }}
-                                disabled={item.quantity <= 1}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="px-3 py-1 text-sm font-medium min-w-[2rem] text-center">
-                                {item.quantity}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
-                                onClick={() => {
-                                  removeCouponAndProduct();
-                                  updateQuantity(item.id, item.quantity + 1);
-                                }}
-                                disabled={!canAddToCart(item.id, 1)}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-
-                            {/* Remove Button */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                if (items.length <= 1) {
-                                  showToast({
-                                    variant: "warning",
-                                    message:
-                                      "Checkout must have atleast 1 item",
-                                  });
-                                  return;
-                                }
-                                removeCouponAndProduct();
-                                removeItem(item.id);
-                              }}
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Item Total */}
-                        <div className="text-right">
-                          <p className="font-semibold">
-                            ₹ {(item.price * item.quantity).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Show message if cart is empty */}
-                    {items.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>Your cart is empty</p>
-                      </div>
-                    )}
-
-                    {items.length > 0 && (
-                      <div className="border-t pt-4 space-y-2">
-                        <div className="flex justify-between">
-                          <span>Subtotal</span>
-                          <span>₹ {total.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Shipping</span>
-                          <span>₹ {shippingCost.toFixed(2)}</span>
-                        </div>
-                        {paymentMethod === "cod" && (
-                          <div className="flex justify-between">
-                            <span>COD charges</span>
-                            <span>₹ {50}</span>
-                          </div>
-                        )}
-                        {appliedCoupon && (
-                          <div className="">
-                            <div className="flex justify-between text-green-700">
-                              <span>Coupon Applied</span>
-                              <span>- ₹ {COUPON_DISCOUNT.toFixed(2)}</span>
-                            </div>
-                            <p className="text-sm text-gray-500">
-                              {appliedCoupon.description}
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                          <span>Total</span>
-                          <span>₹ {finalTotal.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
+        <MobileOrderSummary
+          showOrderSummary={showOrderSummary}
+          setShowOrderSummary={setShowOrderSummary}
+          finalTotal={finalTotal}
+          total={total}
+          shippingCost={shippingCost}
+          items={items}
+          paymentMethod={paymentMethod}
+          appliedCoupon={appliedCoupon}
+          COUPON_DISCOUNT={COUPON_DISCOUNT}
+          showToast={showToast}
+          removeCouponAndProduct={removeCouponAndProduct}
+          updateQuantity={updateQuantity}
+          canAddToCart={canAddToCart}
+          removeItem={removeItem}
+          showComboEditor={showComboEditor}
+          setShowComboEditor={setShowComboEditor}
+        />
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Main Form */}
@@ -1195,144 +1010,22 @@ export default function CheckoutPage() {
           </form>
 
           {/* Desktop Order Summary */}
-          <div className="hidden lg:block">
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Order Summary</span>
-                  <span className="text-2xl font-bold">
-                    ₹ {finalTotal.toFixed(2)}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="relative">
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        width={45}
-                        height={60}
-                        className="rounded border"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm mb-1">{item.name}</p>
-                      <p className="text-sm text-gray-600">
-                        ₹ {item.price.toFixed(2)}
-                      </p>
-
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex items-center border rounded">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-100"
-                            onClick={() => {
-                              removeCouponAndProduct()
-                              updateQuantity(
-                                item.id,
-                                Math.max(1, item.quantity - 1)
-                              );
-                            }}
-                            disabled={item.quantity <= 1}
-                          >
-                            <Minus className="w-3 h-3" />
-                          </Button>
-                          <span className="px-3 py-1 text-sm font-medium min-w-[2rem] text-center">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-100"
-                            onClick={() => {
-                              removeCouponAndProduct()
-                              updateQuantity(item.id, item.quantity + 1);
-                            }}
-                            disabled={!canAddToCart(item.id, 1)}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </Button>
-                        </div>
-
-                        {/* Remove Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => {
-                            if (items.length <= 1) {
-                              showToast({
-                                variant: "warning",
-                                message: "Checkout must have atleast 1 item",
-                              });
-                              return;
-                            }
-                           removeCouponAndProduct()
-                            removeItem(item.id);
-                          }}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Item Total */}
-                    <div className="text-right">
-                      <p className="font-semibold">
-                        ₹ {(item.price * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Show message if cart is empty */}
-                {items.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>Your cart is empty</p>
-                  </div>
-                )}
-
-                {items.length > 0 && (
-                  <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>₹ {total.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Shipping</span>
-                      <span>₹ {shippingCost.toFixed(2)}</span>
-                    </div>
-                    {paymentMethod === "cod" && (
-                      <div className="flex justify-between">
-                        <span>COD charges</span>
-                        <span>₹ {50}</span>
-                      </div>
-                    )}
-                    {appliedCoupon && (
-                      <div className="">
-                        <div className="flex justify-between text-green-700">
-                          <span>Coupon Applied</span>
-                          <span>- ₹ {COUPON_DISCOUNT.toFixed(2)}</span>
-                        </div>
-                        <p className="text-sm text-gray-500">
-                          {appliedCoupon.description}
-                        </p>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                      <span>Total</span>
-                      <span>₹ {finalTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <DesktopOrderSummary
+            finalTotal={finalTotal}
+            total={total}
+            shippingCost={shippingCost}
+            items={items}
+            removeCouponAndProduct={removeCouponAndProduct}
+            appliedCoupon={appliedCoupon}
+            COUPON_DISCOUNT={COUPON_DISCOUNT}
+            paymentMethod={paymentMethod}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            canAddToCart={canAddToCart}
+            showToast={showToast}
+            showComboEditor={showComboEditor}
+            setShowComboEditor={setShowComboEditor}
+          />
         </div>
       </div>
 
@@ -1357,3 +1050,25 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+const Header: React.FC = () => {
+  return (
+    <header className="bg-white border-b">
+      <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
+            <span className="text-white font-bold text-sm">D</span>
+          </div>
+          <span className="font-semibold text-lg">delhi book market</span>
+        </Link>
+
+        <Link
+          href="/cart"
+          className="text-sm text-blue-600 hover:underline font-medium"
+        >
+          ← Back to Cart
+        </Link>
+      </div>
+    </header>
+  );
+};

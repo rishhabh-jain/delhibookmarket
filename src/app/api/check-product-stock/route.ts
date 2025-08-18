@@ -9,10 +9,21 @@ const WooCommerce = new WooCommerceRestApi({
   version: "wc/v3",
 });
 
-interface ProductRequest {
+interface BaseProductRequest {
   product_id: number;
   quantity: number;
 }
+
+interface SingleProductRequest extends BaseProductRequest {
+  type: "product";
+}
+
+interface ComboProductRequest extends BaseProductRequest {
+  type: "combo";
+  combo_id: number; // Only combos have this
+}
+
+type ProductRequest = SingleProductRequest | ComboProductRequest;
 
 interface WooCommerceProduct {
   id: number;
@@ -22,13 +33,24 @@ interface WooCommerceProduct {
   manage_stock: boolean;
 }
 
-interface OutOfStockItem {
-  product_id: number;
-  product_name: string;
-  requested_quantity: number;
-  available_quantity: number;
-  out_of_stock_quantity: number;
-}
+type OutOfStockItem =
+  | {
+      type: "product";
+      product_id: number;
+      product_name: string;
+      requested_quantity: number;
+      available_quantity: number;
+      out_of_stock_quantity: number;
+    }
+  | {
+      type: "combo";
+      product_id: number;
+      combo_id: number;
+      product_name: string;
+      requested_quantity: number;
+      available_quantity: number;
+      out_of_stock_quantity: number;
+    };
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,25 +103,53 @@ export async function POST(request: NextRequest) {
 
       if (!product) {
         // Product not found - treat as completely out of stock
-        out_of_stock_list.push({
-          product_id: item.product_id,
-          product_name: "Product not found",
-          requested_quantity: item.quantity,
-          available_quantity: 0,
-          out_of_stock_quantity: item.quantity,
-        });
+        if (item.type === "product") {
+          out_of_stock_list.push({
+            product_id: item.product_id,
+            product_name: "Product not found",
+            requested_quantity: item.quantity,
+            available_quantity: 0,
+            out_of_stock_quantity: item.quantity,
+            type: "product",
+          });
+        } else {
+          out_of_stock_list.push({
+            product_id: item.product_id,
+            combo_id: item.combo_id,
+            product_name: "Combo not found",
+            requested_quantity: item.quantity,
+            available_quantity: 0,
+            out_of_stock_quantity: item.quantity,
+            type: "combo",
+          });
+        }
+
         continue;
       }
 
       // Check if product is out of stock
       if (product.stock_status === "outofstock") {
-        out_of_stock_list.push({
-          product_id: product.id,
-          product_name: product.name,
-          requested_quantity: item.quantity,
-          available_quantity: 0,
-          out_of_stock_quantity: item.quantity,
-        });
+        if (item.type === "product") {
+          out_of_stock_list.push({
+            product_id: product.id,
+            product_name: product.name,
+            requested_quantity: item.quantity,
+            available_quantity: 0,
+            out_of_stock_quantity: item.quantity,
+            type: "product",
+          });
+        } else {
+          out_of_stock_list.push({
+            product_id: product.id,
+            combo_id: item.combo_id,
+            product_name: product.name,
+            requested_quantity: item.quantity,
+            available_quantity: 0,
+            out_of_stock_quantity: item.quantity,
+            type: "combo",
+          });
+        }
+
         continue;
       }
 
@@ -112,13 +162,26 @@ export async function POST(request: NextRequest) {
           const outOfStockQuantity =
             item.quantity - Math.max(0, availableStock);
 
-          out_of_stock_list.push({
-            product_id: product.id,
-            product_name: product.name,
-            requested_quantity: item.quantity,
-            available_quantity: Math.max(0, availableStock),
-            out_of_stock_quantity: outOfStockQuantity,
-          });
+          if (item.type === "product") {
+            out_of_stock_list.push({
+              product_id: product.id,
+              product_name: product.name,
+              requested_quantity: item.quantity,
+              available_quantity: 0,
+              out_of_stock_quantity: item.quantity,
+              type: "product",
+            });
+          } else {
+            out_of_stock_list.push({
+              product_id: product.id,
+              product_name: product.name,
+              requested_quantity: item.quantity,
+              available_quantity: Math.max(0, availableStock),
+              out_of_stock_quantity: outOfStockQuantity,
+              type: item.type,
+              combo_id: item.combo_id,
+            });
+          }
         }
       }
       // If stock is not managed and status is 'instock', assume sufficient stock

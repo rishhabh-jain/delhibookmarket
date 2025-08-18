@@ -1,3 +1,5 @@
+import { PromoCode } from "../types";
+
 export const PROMOCODES = [
   {
     id: 49142,
@@ -198,16 +200,16 @@ export const PROMOCODES = [
   },
 ];
 
-export function getCoupon(code: string) {
+export function getCoupon(code: string) : PromoCode | null {
   const promocode = PROMOCODES.find((coupon) => coupon.code === code) || null;
   if (!promocode) {
     return null;
   }
   return {
-    amount: promocode?.amount,
-    code: promocode?.code,
-    minimum_amount: promocode?.minimum_amount,
-    description: promocode?.description,
+    amount: Number(promocode.amount),
+    code: promocode.code,
+    minimum_amount: Number(promocode.minimum_amount),
+    description: promocode.description,
   };
 }
 

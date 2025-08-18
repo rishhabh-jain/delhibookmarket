@@ -1,10 +1,10 @@
 import React from "react";
 import { Metadata } from "next";
 import ProductClient from "./productClient";
-import { WooProduct } from "@/context/CartContext";
+import { ProductPage } from "@/app/types";
 
 // Helper function to generate structured data
-function generateStructuredData(product: WooProduct) {
+function generateStructuredData(product: ProductPage) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -137,13 +137,12 @@ function extractTextFromHTML(html: string): string {
 }
 
 // Helper function to generate keywords
-function generateKeywords(product: WooProduct): string {
+function generateKeywords(product: ProductPage): string {
   const keywords = [
     product.name,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(product.categories?.map((cat: any) => cat.name) || []),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(product.tags?.map((tag: any) => tag.name) || []),
     "book",
     "buy online",
     "Delhi Book Market",
@@ -275,7 +274,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductPage({
+export default async function ProductWebPage({
   params,
 }: {
   params: Promise<{ id: string }>;

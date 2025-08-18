@@ -1,6 +1,5 @@
 "use client";
 
-import { CartItem, CartItemUnion, ComboItem, FullProduct, ProductPage } from "@/app/types";
 import { usePathname } from "next/navigation";
 import React, {
   createContext,
@@ -10,12 +9,67 @@ import React, {
   useEffect,
 } from "react";
 
+// WooCommerce Product Interface
+export interface WooProduct {
+  id: number;
+  name: string;
+  permalink: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  images: {
+    id: number;
+    date_created: string;
+    date_created_gmt: string;
+    date_modified: string;
+    date_modified_gmt: string;
+    src: string;
+    name: string;
+    alt: string;
+  }[];
+  stock_quantity: number;
+  stock_status: "instock" | "outofstock" | "onbackorder";
+  isPromotional?: boolean;
+}
+
+// Individual Cart Item Interface
+export interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  regular_price: number;
+  sale_price: number;
+  quantity: number;
+  image?: string;
+  stock_quantity: number;
+  stock_status: "instock" | "outofstock" | "onbackorder";
+  permalink: string;
+  isPromotional?: boolean;
+  type: "product"; // Distinguish from combo
+}
+
+// Combo Item Interface
+export interface ComboItem {
+  id: string; // Unique combo ID (generated)
+  name: string; // Custom combo name
+  price: number; // Total combo price
+  quantity: number;
+  products: WooProduct[]; // Array of products in the combo
+  discountPercent?: number; // Optional discount
+  type: "combo"; // Distinguish from regular product
+  image?: string; // Can use first product's image
+}
+
+// Union type for cart items
+export type CartItemUnion = CartItem | ComboItem;
+
 interface CartState {
   items: CartItemUnion[];
   total: number;
   itemCount: number;
   isSidecartOpen: boolean;
 }
+
 type CartAction =
   | {
       type: "ADD_ITEM";
@@ -24,17 +78,16 @@ type CartAction =
   | {
       type: "ADD_COMBO";
       payload: Omit<ComboItem, "quantity"> & { quantity?: number };
-
     }
-  | { type: "REMOVE_ITEM"; payload: { id:  number } }
-  | { type: "UPDATE_QUANTITY"; payload: { id:  number; quantity: number } }
+  | { type: "REMOVE_ITEM"; payload: { id: string | number } }
+  | { type: "UPDATE_QUANTITY"; payload: { id: string | number; quantity: number } }
   | { 
       type: "ADD_PRODUCT_TO_COMBO"; 
-      payload: { comboId: number; product: FullProduct} 
+      payload: { comboId: string; product: WooProduct } 
     }
   | { 
       type: "REMOVE_PRODUCT_FROM_COMBO"; 
-      payload: { comboId: number; productId: number } 
+      payload: { comboId: string; productId: number } 
     }
   | { type: "CLEAR_CART" }
   | { type: "LOAD_CART" }
@@ -44,13 +97,13 @@ type CartAction =
 
 interface CartContextType extends CartState {
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
-  addWooProductWithAnimation: (product: ProductPage, quantity?: number, delay?: number) => Promise<void>;
-  addWooProduct: (product: ProductPage, quantity?: number) => void;
-  addCombo: (products: FullProduct[], discountPercent?: number, quantity?: number) => number;
-  removeItem: (id:  number) => void;
-  updateQuantity: (id:  number, quantity: number) => void;
-  addProductToCombo: (comboId: number, product: FullProduct) => void;
-  removeProductFromCombo: (comboId: number, productId: number) => void;
+  addWooProductWithAnimation: (product: WooProduct, quantity?: number, delay?: number) => Promise<void>;
+  addWooProduct: (product: WooProduct, quantity?: number) => void;
+  addCombo: (products: WooProduct[], discountPercent?: number, quantity?: number) => string;
+  removeItem: (id: string | number) => void;
+  updateQuantity: (id: string | number, quantity: number) => void;
+  addProductToCombo: (comboId: string, product: WooProduct) => void;
+  removeProductFromCombo: (comboId: string, productId: number) => void;
   clearCart: () => void;
   isInStock: (id: number) => boolean;
   canAddToCart: (id: number, requestedQuantity: number) => boolean;
@@ -58,26 +111,25 @@ interface CartContextType extends CartState {
   closeSidecart: () => void;
   toggleSidecart: () => void;
   removeFreeItems: () => void;
-  getComboById: (comboId: number) => ComboItem | undefined;
+  getComboById: (comboId: string) => ComboItem | undefined;
 }
 
 // Local storage key
 const CART_STORAGE_KEY = "ecommerce_cart";
 
 // Helper function to generate combo name
-const generateComboName = (products: FullProduct[]): string => {
+const generateComboName = (products: WooProduct[]): string => {
   const names = products.map(p => p.name).join(" + ");
   return `Buy ${names}`;
 };
 
 // Helper function to generate unique combo ID
-const generateComboId = (): number => {
-  return Date.now() + Math.floor(Math.random() * 1000000);
+const generateComboId = (): string => {
+  return `combo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-
 // Helper function to calculate combo price
-const calculateComboPrice = (products: FullProduct[], discountPercent: number = 0): number => {
+const calculateComboPrice = (products: WooProduct[], discountPercent: number = 0): number => {
   const totalPrice = products.reduce((sum, product) => {
     const price = product.sale_price 
       ? parseFloat(product.sale_price)
@@ -130,7 +182,7 @@ const initialState: CartState = loadCartFromStorage();
 
 // Helper function to convert WooProduct to CartItem
 const wooProductToCartItem = (
-  product: ProductPage
+  product: WooProduct
 ): Omit<CartItem, "quantity"> => {
   const currentPrice = product.sale_price
     ? parseFloat(product.sale_price)
@@ -144,7 +196,7 @@ const wooProductToCartItem = (
     sale_price: product.sale_price ? parseFloat(product.sale_price) : 0,
     image: product.images.length > 0 ? product.images[0].src : undefined,
     stock_quantity: product.stock_quantity,
-    stock_status: product.stock_status as "instock" | "outofstock" | "onbackorder",
+    stock_status: product.stock_status,
     permalink: product.permalink,
     isPromotional: product.isPromotional || false,
     type: "product" as const,
@@ -280,7 +332,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case "ADD_PRODUCT_TO_COMBO": {
       const { comboId, product } = action.payload;
       const newItems = state.items.map((item) => {
-        if (item.type === "combo" && String(item.id) === String(comboId)) {
+        if (item.type === "combo" && item.id === comboId) {
           const updatedProducts = [...item.products, product];
           const updatedPrice = calculateComboPrice(updatedProducts, item.discountPercent);
           const updatedName = generateComboName(updatedProducts);
@@ -406,13 +458,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     dispatch({ type: "ADD_ITEM", payload: item });
   };
 
-  const addWooProduct = (product: ProductPage, quantity: number = 1) => {
+  const addWooProduct = (product: WooProduct, quantity: number = 1) => {
     const cartItem = wooProductToCartItem(product);
     dispatch({ type: "ADD_ITEM", payload: { ...cartItem, quantity } });
   };
 
   const addWooProductWithAnimation = async (
-    product: ProductPage, 
+    product: WooProduct, 
     quantity: number = 1, 
     delay: number = 800
   ) => {
@@ -426,10 +478,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const addCombo = (
-    products:  FullProduct[], 
+    products: WooProduct[], 
     discountPercent: number = 10, 
     quantity: number = 1
-  ): number => {
+  ): string => {
     const comboId = generateComboId();
     const comboName = generateComboName(products);
     const comboPrice = calculateComboPrice(products, discountPercent);
@@ -449,15 +501,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     return comboId;
   };
 
-  const addProductToCombo = (comboId: number, product:   FullProduct) => {
+  const addProductToCombo = (comboId: string, product: WooProduct) => {
     dispatch({ type: "ADD_PRODUCT_TO_COMBO", payload: { comboId, product } });
   };
 
-  const removeProductFromCombo = (comboId: number, productId: number) => {
+  const removeProductFromCombo = (comboId: string, productId: number) => {
     dispatch({ type: "REMOVE_PRODUCT_FROM_COMBO", payload: { comboId, productId } });
   };
 
-  const getComboById = (comboId: number): ComboItem | undefined => {
+  const getComboById = (comboId: string): ComboItem | undefined => {
     const item = state.items.find(item => item.type === "combo" && item.id === comboId);
     return item?.type === "combo" ? item : undefined;
   };
@@ -472,11 +524,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: string | number) => {
     dispatch({ type: "REMOVE_ITEM", payload: { id } });
   };
 
-  const updateQuantity = (id: number, quantity: number) => {
+  const updateQuantity = (id: string | number, quantity: number) => {
     dispatch({ type: "UPDATE_QUANTITY", payload: { id, quantity } });
   };
 

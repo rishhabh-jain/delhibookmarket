@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from "react";
 import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ComboProduct } from "../Combo/ComboV1";
 
 interface RelatedProduct {
   product_id: string;
@@ -203,6 +204,8 @@ export default function RelatedProducts({ productId, title }: Props) {
   const maxIndex = Math.max(0, fullProducts.length - visibleCount);
 
   return (
+    <>
+    <ComboProduct productId={productId} title={title}/>
     <section className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50/50">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
@@ -350,5 +353,6 @@ export default function RelatedProducts({ productId, title }: Props) {
         )}
       </div>
     </section>
+    </>
   );
 }

@@ -29,12 +29,53 @@ import { useAlert } from "@/context/AlertContext";
 import CountDownTimer from "@/components/product/CountDownTimer";
 import Image from "next/image";
 import axios from "axios";
-import { useFlyingCart } from "@/hooks/useFlyingCart";
 import RelatedProducts from "@/components/related-product/RelatedProducts";
-import { ProductPage } from "@/app/types";
+
+export interface WooProduct {
+  id: number;
+  name: string;
+  permalink: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  description: string;
+  short_description: string;
+  images: {
+    id: number;
+    date_created: string;
+    date_created_gmt: string;
+    date_modified: string;
+    date_modified_gmt: string;
+    src: string;
+    name: string;
+    alt: string;
+  }[];
+  stock_quantity: number;
+  categories: {
+    id: number;
+    name: string;
+    slug: string;
+  }[];
+  tags: string[];
+  attributes: string[];
+  average_rating: string;
+  rating_count: number;
+  stock_status: "instock" | "outofstock" | "onbackorder";
+  _links: {
+    self: {
+      href: string;
+      targetHints: {
+        allow: ("GET" | "POST" | "PUT" | "PATCH" | "DELETE")[];
+      };
+    }[];
+    collection: {
+      href: string;
+    }[];
+  };
+}
 
 interface ProductClientProps {
-  product: ProductPage;
+  product: WooProduct;
 }
 
 interface StockResponse {
@@ -42,10 +83,8 @@ interface StockResponse {
   stock_status: "instock" | "outofstock" | "onbackorder";
 }
 
-export default function ProductClientFixed({ product }: ProductClientProps) {
+export default function ProductClient({ product }: ProductClientProps) {
   const { showToast } = useAlert();
-  const { animateToCart } = useFlyingCart();
-
   const [quantity, setQuantity] = useState(1);
   const [pincode, setPincode] = useState("");
   const [isAdded, setIsAdded] = useState(false);
@@ -61,18 +100,10 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
   const { addWooProduct } = useCart();
 
   const stockRef = useRef("cached");
-  const addButtonRef = useRef<HTMLButtonElement>(null);
-  const productImageRef = useRef<HTMLImageElement>(null);
 
   const checkStockPromiseRef = useRef<Promise<void> | null>(null);
 
   const checkStock = async () => {
-    if (stockRef.current === "fresh") {
-      setStockStatus({
-        stock_quantity: stockStatus?.stock_quantity ?? 1,
-        stock_status: stockStatus?.stock_status ?? "instock",
-      });
-    }
     try {
       const {
         data: { response },
@@ -86,11 +117,9 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
         }
       );
       console.log(response);
-      setStockStatus(() => {
-        return {
-          stock_quantity: response.stock_quantity,
-          stock_status: response.stock_status,
-        };
+      setStockStatus({
+        stock_quantity: response.stock_quantity,
+        stock_status: response.stock_status,
       });
       stockRef.current = "fresh";
     } catch (error) {
@@ -98,10 +127,7 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
       // Set fallback stock data from product prop
       setStockStatus({
         stock_quantity: currentProduct.stock_quantity,
-        stock_status: currentProduct.stock_status as
-          | "instock"
-          | "outofstock"
-          | "onbackorder",
+        stock_status: currentProduct.stock_status,
       });
       stockRef.current = "cached";
     } finally {
@@ -110,15 +136,22 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
     }
   };
 
-  // Helper function to check if product is out of stock (only for fresh data)
-  const isProductOutOfStockFresh = () => {
-    if (!stockStatus || stockRef.current !== "fresh") {
-      return false; // Don't treat as out of stock if we don't have fresh data
+  // Helper function to check if product is out of stock
+  const isProductOutOfStock = () => {
+    //IF NOT FRESH DATA AVAILABLE , FALLBACK TO ORIGINAL DATA
+
+    if(stockRef.current === "cached"){
+      
     }
+    const currentStockStatus = stockStatus || {
+      stock_quantity: currentProduct.stock_quantity,
+      stock_status: currentProduct.stock_status,
+    };
 
     return (
-      stockStatus.stock_status === "outofstock" ||
-      (stockStatus.stock_quantity !== null && stockStatus.stock_quantity <= 0)
+      currentStockStatus.stock_status === "outofstock" ||
+      (currentStockStatus.stock_quantity !== null &&
+        currentStockStatus.stock_quantity <= 0)
     );
   };
 
@@ -126,7 +159,7 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
   const shouldShowOutOfStock = () => {
     // Only show out of stock when we have fresh data and it's actually out of stock
     if (stockRef.current === "fresh" && isStockDataFetched) {
-      return isProductOutOfStockFresh();
+      return isProductOutOfStock();
     }
     return false;
   };
@@ -135,7 +168,6 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
     if (isAdded || isAddingToCart) return;
 
     setIsAddingToCart(true);
-    const startElement = addButtonRef.current || productImageRef.current;
 
     try {
       // If stock data is not fetched yet, wait for it
@@ -144,20 +176,20 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
         await checkStockPromiseRef.current;
       }
 
-      // Now we have fresh stock data, check if it's actually out of stock
-      const currentStockStatus = stockStatus || {
-        stock_quantity: currentProduct.stock_quantity,
-        stock_status: currentProduct.stock_status,
-      };
-
-      // Only check for out of stock if we have fresh data
-      if (stockRef.current === "fresh" && isProductOutOfStockFresh()) {
+      // Check if product is out of stock
+      if (isProductOutOfStock()) {
         showToast({
           variant: "warning",
           message: "This product is currently out of stock.",
         });
         return;
       }
+
+      // Get current stock status
+      const currentStockStatus = stockStatus || {
+        stock_quantity: currentProduct.stock_quantity,
+        stock_status: currentProduct.stock_status,
+      };
 
       if (quantity > currentStockStatus.stock_quantity) {
         showToast({
@@ -167,32 +199,14 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
         return;
       }
 
-      animateToCart({
-        productImage: product.images[0]?.src || "/placeholder-book.jpg",
-        productName: product.name,
-        startElement,
-        onAnimationComplete: () => {
-          // Add to cart after animation
-          addWooProduct(
-            {
-              ...currentProduct,
-              stock_quantity: currentStockStatus.stock_quantity,
-              stock_status: currentStockStatus.stock_status,
-            },
-            quantity
-          );
-          setIsAddingToCart(false);
+      addWooProduct(
+        {
+          ...currentProduct,
+          stock_quantity: currentStockStatus.stock_quantity,
+          stock_status: currentStockStatus.stock_status,
         },
-      });
-
-      // addWooProduct(
-      //   {
-      //     ...currentProduct,
-      //     stock_quantity: currentStockStatus.stock_quantity,
-      //     stock_status: currentStockStatus.stock_status,
-      //   },
-      //   quantity
-      // );
+        quantity
+      );
 
       setIsAdded(true);
       showToast({
@@ -223,23 +237,23 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
       // If stock data is not fetched yet, wait for it
       if (!isStockDataFetched) {
         setStockCheckLoading(true);
-        await checkStock();
+        await checkStockPromiseRef.current;
       }
 
-      // Now we have fresh stock data, check if it's actually out of stock
-      const currentStockStatus = stockStatus || {
-        stock_quantity: currentProduct.stock_quantity,
-        stock_status: currentProduct.stock_status,
-      };
-
-      // Only check for out of stock if we have fresh data
-      if (stockRef.current === "fresh" && isProductOutOfStockFresh()) {
+      // Check if product is out of stock
+      if (isProductOutOfStock()) {
         showToast({
           variant: "warning",
           message: "This product is currently out of stock.",
         });
         return;
       }
+
+      // Get current stock status
+      const currentStockStatus = stockStatus || {
+        stock_quantity: currentProduct.stock_quantity,
+        stock_status: currentProduct.stock_status,
+      };
 
       if (quantity > currentStockStatus.stock_quantity) {
         showToast({
@@ -308,16 +322,14 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
       return {
         quantity: stockStatus.stock_quantity,
         status: stockStatus.stock_status,
-        isInStock: !isProductOutOfStockFresh(),
+        isInStock: !isProductOutOfStock(),
       };
     }
     // Fallback to product data
     return {
       quantity: currentProduct.stock_quantity,
       status: currentProduct.stock_status,
-      isInStock:
-        currentProduct.stock_quantity > 0 &&
-        currentProduct.stock_status === "instock",
+      isInStock: currentProduct.stock_quantity > 0 && currentProduct.stock_status === "instock",
     };
   };
 
@@ -355,16 +367,15 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
           <div className="lg:col-span-1">
             <div className="sticky top-4">
               <Image
-                ref={productImageRef}
                 src={
                   currentProduct?.images[0]?.src ||
                   "/placeholder.svg?height=500&width=350" ||
                   "/placeholder.svg"
                 }
                 alt={currentProduct?.images[0]?.alt || currentProduct?.name}
-                width={270}
-                height={300}
-                className="mx-auto rounded-lg shadow-md"
+                width={300}
+                height={400}
+                className="w-full h-auto rounded-lg shadow-md"
               />
             </div>
           </div>
@@ -385,9 +396,7 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
                 {stockCheckLoading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                    <span className="text-gray-600">
-                      Checking availability...
-                    </span>
+                    <span className="text-gray-600">Checking availability...</span>
                   </>
                 ) : shouldShowOutOfStock() ? (
                   <>
@@ -475,9 +484,7 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
                       ) : (
                         <>
                           <Check className="w-4 h-4 text-green-600" />
-                          <span className="text-green-600">
-                            {stockQuantity} in stock
-                          </span>
+                          <span className="text-green-600">{stockQuantity} in stock</span>
                         </>
                       )}
                     </>
@@ -520,7 +527,6 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
 
               <div className="space-y-2">
                 <Button
-                  ref={addButtonRef}
                   variant="outline"
                   className={`w-full text-sm h-9 transition-all duration-300 ease-in-out relative overflow-hidden ${
                     isAdded
@@ -565,7 +571,9 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
                   onClick={handleDirectCheckout}
                   className="w-full bg-black hover:bg-gray-800 text-white text-sm h-9 transition-colors duration-200"
                   disabled={
-                    isBuyingNow || shouldShowOutOfStock() || stockCheckLoading
+                    isBuyingNow ||
+                    shouldShowOutOfStock() ||
+                    stockCheckLoading
                   }
                 >
                   {getBuyNowButtonText()}
@@ -586,7 +594,7 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
               title={product.name}
               currentProduct={{
                 ...product,
-                slug: product.permalink.split("/").filter(Boolean).pop() ?? "/",
+                slug:product.permalink
               }}
             />
 
@@ -628,7 +636,17 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
             </div>
 
             {/* Action Buttons */}
-            <BulkInquiryButton />
+            <div className="flex gap-3">
+              <a href="https://shop.delhibookmarket.com/bulk-order-dropshipping/">
+                <Button
+                  variant="outline"
+                  className="flex-1 bg-black text-white hover:bg-gray-800 text-sm h-9"
+                >
+                  Bulk Inquiry
+                </Button>
+              </a>
+            </div>
+
             {/* Delivery Check */}
             <div className="bg-gray-50 rounded-lg p-3">
               <h3 className="text-sm font-semibold mb-2">Delivery Check:</h3>
@@ -669,24 +687,21 @@ export default function ProductClientFixed({ product }: ProductClientProps) {
           </div>
         </div>
       </div>
-      <ProductDescription product={currentProduct} className="mx-4" />
-      <UserReviews className="mt-4" />
-      <Footer />
+
+      {/* Description */}
+      <div className="mx-4">
+        <ProductDescription product={currentProduct} />
+      </div>
+
+      {/* User Reviews */}
+      <div className="mt-4">
+        <UserReviews />
+      </div>
+
+      {/* Footer */}
+      <div className="">
+        <Footer />
+      </div>
     </>
   );
 }
-
-const BulkInquiryButton = () => {
-  return (
-    <div className="flex gap-3">
-      <a href="https://shop.delhibookmarket.com/bulk-order-dropshipping/">
-        <Button
-          variant="outline"
-          className="flex-1 bg-black text-white hover:bg-gray-800 text-sm h-9"
-        >
-          Bulk Inquiry
-        </Button>
-      </a>
-    </div>
-  );
-};

@@ -102,7 +102,7 @@ async function generateProducts(): Promise<void> {
           page,
           // Include total_sales for search prioritization
           _fields:
-            "id,name,permalink,price,images,slug,total_sales,stock_quantity,status",
+            "id,name,permalink,price,regular_price,sale_price,images,slug,total_sales,stock_quantity,status",
         },
       });
 

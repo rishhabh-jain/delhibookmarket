@@ -1,7 +1,7 @@
 import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export default function UserReviews() {
+export default function UserReviews({ className }: { className?: string }) {
   const ratingData = [
     { stars: 5, percentage: 86 },
     { stars: 4, percentage: 55 },
@@ -41,7 +41,7 @@ export default function UserReviews() {
   };
 
   return (
-    <div className=" mx-auto bg-white">
+    <div className={`mx-auto bg-white ${className}`}>
       {/* Header */}
       <div className="bg-yellow-300 text-center py-6 px-4">
         <h2 className="text-2xl font-semibold text-gray-800">
