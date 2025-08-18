@@ -343,11 +343,9 @@ const CartItemComponent: React.FC<CartItemComponentProps> = ({
             )}
 
             {/* Name */}
-            {item.type === "combo" && (
-              <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
-                {item.name}
-              </h3>
-            )}
+            {/* {item.type === "combo" && (
+              
+            )} */}
 
             {item.type === "product" && (
               <Link
@@ -355,12 +353,12 @@ const CartItemComponent: React.FC<CartItemComponentProps> = ({
                   item.permalink.split("/").filter(Boolean).pop() ??
                   item.permalink
                 }
-              >
-                <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
-                  {item.name}
-                </h3>
-              </Link>
+              ></Link>
             )}
+
+            <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
+              {item.name}
+            </h3>
 
             {/* Combo Details */}
             {isCombo && combo && (
