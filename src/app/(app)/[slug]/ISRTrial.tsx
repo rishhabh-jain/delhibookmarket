@@ -1,7 +1,8 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ProductClient, { WooProduct } from "../product/[id]/productClient";
+import ProductClient from "../product/[id]/productClient";
+import { ProductPage } from "@/app/types";
 
 // Revalidate every 24 hours (86400 seconds)
 export const revalidate = 10;
@@ -40,7 +41,7 @@ export async function generateStaticParams() {
 }
 
 // Helper function to generate structured data
-function generateStructuredData(product: WooProduct) {
+function generateStructuredData(product: ProductPage) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -173,13 +174,12 @@ function extractTextFromHTML(html: string): string {
 }
 
 // Helper function to generate keywords
-function generateKeywords(product: WooProduct): string {
+function generateKeywords(product: ProductPage): string {
   const keywords = [
     product.name,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(product.categories?.map((cat: any) => cat.name) || []),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(product.tags?.map((tag: any) => tag.name) || []),
     "book",
     "buy online",
     "Delhi Book Market",
@@ -341,7 +341,7 @@ async function ProductData({ slug }: { slug: string }) {
 }
 
 // Main page component with Suspense for loading states
-export default async function ProductPage({
+export default async function ProductWebPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
