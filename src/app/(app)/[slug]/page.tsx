@@ -1,9 +1,11 @@
 import React from "react";
 import { Metadata } from "next";
-import ProductClient, { WooProduct } from "../product/[id]/productClient";
+import { notFound } from "next/navigation";
+import ProductClientFixed from "../product/[id]/ProductClientFixed";
+import { ProductPage } from "@/app/types";
 
 // Helper function to generate structured data
-function generateStructuredData(product: WooProduct) {
+function generateStructuredData(product: ProductPage) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -136,13 +138,11 @@ function extractTextFromHTML(html: string): string {
 }
 
 // Helper function to generate keywords
-function generateKeywords(product: WooProduct): string {
+function generateKeywords(product: ProductPage): string {
   const keywords = [
     product.name,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(product.categories?.map((cat: any) => cat.name) || []),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(product.tags?.map((tag: any) => tag.name) || []),
     "book",
     "buy online",
     "Delhi Book Market",
@@ -156,7 +156,7 @@ async function fetchProduct(slug: string) {
   try {
     const response = await fetch(
       `${
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+        process.env.NEXT_PUBLIC_BASE_URL || "https://delhibookmarket.com"
       }/api/get-single-product?slug=${slug}`,
       {
         next: { revalidate: 604800 }, // 1 week in seconds
@@ -164,7 +164,10 @@ async function fetchProduct(slug: string) {
     );
 
     if (!response.ok) {
-      throw new Error("Product not found");
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     return await response.json();
@@ -174,7 +177,7 @@ async function fetchProduct(slug: string) {
   }
 }
 
-// Generate metadata for SEO
+// Generate metadata for SEO - This runs on the server and doesn't affect loading states
 export async function generateMetadata({
   params,
 }: {
@@ -233,7 +236,7 @@ export async function generateMetadata({
     // Twitter Card
     twitter: {
       card: "summary_large_image",
-      site: "@delhibookmarket", // Replace with actual Twitter handle
+      site: "@delhibookmarket",
       creator: "@delhibookmarket",
       title: `${productTitle} | Delhi Book Market`,
       description: productDescription,
@@ -274,7 +277,34 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductPage({
+// Server component for fetching product data
+async function ProductData({ slug }: { slug: string }) {
+  const product = await fetchProduct(slug);
+
+  if (!product) {
+    notFound(); // This will show your not-found.tsx page
+  }
+
+  const structuredData = generateStructuredData(product);
+
+  return (
+    <>
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData),
+        }}
+      />
+
+      {/* Product Component */}
+      <ProductClientFixed product={product} />
+    </>
+  );
+}
+
+// Main page component with Suspense for loading states
+export default async function ProductWebPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -291,30 +321,5 @@ export default async function ProductPage({
     );
   }
 
-  const product = await fetchProduct(slug);
-
-  if (!product) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-red-600">Product not found</h1>
-      </div>
-    );
-  }
-
-  const structuredData = generateStructuredData(product);
-
-  return (
-    <>
-      {/* Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
-      />
-
-      {/* Product Component */}
-      <ProductClient product={product} />
-    </>
-  );
+  return <ProductData slug={slug} />;
 }
