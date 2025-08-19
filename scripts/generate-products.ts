@@ -100,6 +100,8 @@ async function generateProducts(): Promise<void> {
         params: {
           per_page: perPage,
           page,
+          status: "any",
+         
           // Include total_sales for search prioritization
           _fields:
             "id,name,permalink,price,regular_price,sale_price,images,slug,total_sales,stock_quantity,status",
@@ -123,9 +125,7 @@ async function generateProducts(): Promise<void> {
     }
 
     // Filter out products that are not published
-    const publishedProducts = allProducts.filter(
-      (product: WooCommerceProduct) => product.status === "publish"
-    );
+    const publishedProducts = allProducts
 
     console.log(
       `📊 Filtered to ${publishedProducts.length} published products`
