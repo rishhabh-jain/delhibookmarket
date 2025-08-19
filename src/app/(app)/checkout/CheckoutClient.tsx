@@ -38,12 +38,7 @@ import {
 } from "@/app/data/PROMOCODES";
 import CheckoutCoupons from "@/components/ShowCoupon";
 import { indianStates } from "./IndianStates";
-import {
-
-  LineItem,
-  ProductPage,
-  PromoCode,
-} from "@/app/types";
+import { LineItem, ProductPage, PromoCode } from "@/app/types";
 import MobileOrderSummary from "./order-summary/MobileOrderSummary";
 import DesktopOrderSummary from "./order-summary/DesktopOrderSummary";
 import { useTest } from "@/hooks/useTest";
@@ -341,6 +336,22 @@ export default function CheckoutPage() {
       };
 
       const LINE_ITEMS = items.flatMap((item) => {
+        if (!item.type as any) {
+          const lineItem: LineItem = {
+            product_id: item.id,
+            quantity: item.quantity,
+          };
+
+          if (item.isPromotional) {
+            console.log("FREE ITEM", item.name);
+            lineItem.total = "0";
+            lineItem.subtotal = "0";
+            lineItem.subtotal_tax = "0";
+            lineItem.total_tax = "0";
+          }
+
+          return [lineItem];
+        }
         // Regular product
         if (item.type === "product") {
           const lineItem: LineItem = {
@@ -393,7 +404,6 @@ export default function CheckoutPage() {
             },
           ]
         : [];
-
 
       // 1️⃣ Create WooCommerce order
       const wooRes = await axios.post("/api/create-woo-order", {
@@ -450,6 +460,7 @@ export default function CheckoutPage() {
         name: "Delhi Book Market",
         description: "Book Order Payment",
         order_id: razorpayOrderData.id, // 🔥 Fix: should be Razorpay's order ID
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handler: async function (response: any) {
           setIsVerifyingPayment(true);
           // 👇 Hit your verification route
@@ -605,7 +616,7 @@ export default function CheckoutPage() {
     }
   }, [createAccount]);
 
-  useTest(reset)
+  useTest(reset);
 
   const isInitialProcessed = useRef(false);
 
