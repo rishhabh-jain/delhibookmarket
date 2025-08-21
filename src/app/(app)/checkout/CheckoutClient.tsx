@@ -317,6 +317,7 @@ export default function CheckoutPage() {
         first_name: data.first_name,
         last_name: data.last_name,
         address_1: data.address_1,
+        address_2 : data.address_2,
         city: data.city,
         state: data.state,
         postcode: data.postcode,
@@ -329,6 +330,7 @@ export default function CheckoutPage() {
         first_name: data.first_name,
         last_name: data.last_name,
         address_1: data.address_1,
+        address_2: data.address_2,
         city: data.city,
         state: data.state,
         postcode: data.postcode,
@@ -616,7 +618,7 @@ export default function CheckoutPage() {
     }
   }, [createAccount]);
 
-  useTest(reset);
+  // useTest(reset);
 
   const isInitialProcessed = useRef(false);
 
@@ -747,26 +749,29 @@ export default function CheckoutPage() {
                     </p>
                   )}
                 </div>
+
                 <Input
-                  placeholder="Street address *"
+                  placeholder="House No., Apartment / Building, Landmark *"
                   className="h-12"
                   {...register("address_1")}
-                />
-                {errors.address_1 && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.address_1.message}
-                  </p>
-                )}
-                <Input
-                  placeholder="Flat, suite, unit, etc."
-                  className="h-12"
-                  {...register("address_2")}
                 />
                 {errors.address_2 && (
                   <p className="text-sm text-red-600 mt-1">
                     {errors.address_2.message}
                   </p>
                 )}
+
+                <Input
+                  placeholder="Full address *"
+                  className="h-12"
+                  {...register("address_2")}
+                />
+                {errors.address_1 && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.address_1.message}
+                  </p>
+                )}
+
                 <Input
                   placeholder="Town / City *"
                   className="h-12"
