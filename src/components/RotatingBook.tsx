@@ -15,13 +15,13 @@ export default function RotatingBook({
   const bookGroupRef = useRef<THREE.Group>(null);
 
   // ✅ Always load texture at the top level
-  let coverTexture: THREE.Texture | null = null;
+  // let coverTexture: THREE.Texture | null = null;
   try {
-    coverTexture = useLoader(TextureLoader, coverImageUrl);
-    coverTexture.wrapS = THREE.ClampToEdgeWrapping;
-    coverTexture.wrapT = THREE.ClampToEdgeWrapping;
-    coverTexture.minFilter = THREE.LinearFilter;
-    coverTexture.magFilter = THREE.LinearFilter;
+    // coverTexture = useLoader(TextureLoader, coverImageUrl);
+    // coverTexture.wrapS = THREE.ClampToEdgeWrapping;
+    // coverTexture.wrapT = THREE.ClampToEdgeWrapping;
+    // coverTexture.minFilter = THREE.LinearFilter;
+    // coverTexture.magFilter = THREE.LinearFilter;
   } catch {
     console.warn('❌ Failed to load book cover, using fallback texture');
   }
@@ -75,7 +75,7 @@ export default function RotatingBook({
       <mesh position={[0, 0, bookDepth / 2 + coverThickness / 2]} castShadow receiveShadow>
         <boxGeometry args={[bookWidth, bookHeight, coverThickness]} />
         <meshPhongMaterial 
-          map={coverTexture ?? fallbackTexture} 
+          // map={coverTexture ?? fallbackTexture} 
           shininess={20}
           specular={new THREE.Color(0x111111)}
         />
