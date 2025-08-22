@@ -12,10 +12,9 @@ export default function DeliveryChecker() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">Delivery:</h3>
-        <div className="mb-4">
-          <h4 className="font-medium text-gray-700 mb-3">
+      <div className="">
+        <div className="">
+          <h4 className="font-medium text-gray-700">
             Check Availability At
           </h4>
           <div className="flex flex-col my-1">
@@ -39,7 +38,7 @@ export default function DeliveryChecker() {
             </div>
 
             {deliveryData && (
-              <div className="mt-4 p-4 rounded-lg border bg-gray-50 text-sm text-gray-800">
+              <div className="px-4 rounded-lg border bg-gray-50 text-sm text-gray-800">
                 <p>
                   <span className="font-semibold text-gray-900">
                     Delivery in:

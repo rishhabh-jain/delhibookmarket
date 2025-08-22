@@ -162,7 +162,7 @@ export default function CartClient() {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <div className="lg:sticky lg:top-4">
-                <div className="lg:sticky my-4">
+                <div className="lg:sticky">
                   <MysteryBookCard />
                 </div>
                 <Card className="">
@@ -191,7 +191,7 @@ export default function CartClient() {
                     </div>
 
                     {/* Desktop Delivery Checker */}
-                    <div className="hidden lg:block mb-6">
+                    <div className="hidden lg:block mb-2">
                       <DeliveryChecker />
                     </div>
 

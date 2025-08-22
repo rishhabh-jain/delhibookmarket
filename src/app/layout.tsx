@@ -21,6 +21,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Delhi book market",
   description: "Buy books at cheap prize",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
