@@ -104,7 +104,6 @@ export const ComboProduct = forwardRef<HTMLDivElement, Props>(
     };
 
     // Get current combo data from cart
-    console.log("CURRENT COMBO", comboId);
     const currentCombo = comboId ? getComboById(comboId) : null;
 
     if (loading) return <Loading />;

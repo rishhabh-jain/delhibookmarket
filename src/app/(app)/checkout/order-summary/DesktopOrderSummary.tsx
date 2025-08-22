@@ -3,10 +3,9 @@ import { ComboEditorModal } from "@/components/combo/ComboEditorModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertVariant } from "@/context/AlertContext";
-import { Edit3, Minus, Package, Plus, ShoppingCart, X } from "lucide-react";
+import {  Minus, Package, Plus, ShoppingCart, X } from "lucide-react";
 import Image from "next/image";
 import React from "react";
-import { motion } from "framer-motion";
 interface DesktopOrderSummaryProps {
   finalTotal: number;
   total: number;
@@ -17,7 +16,12 @@ interface DesktopOrderSummaryProps {
   COUPON_DISCOUNT: number;
   paymentMethod: string;
   updateQuantity: (id: number, qty: number) => void;
-  removeItem: (id: number) => void;
+  removeItem: (payload: {
+    id: number;
+    variation?: {
+      id: number;
+    };
+  }) => void;
   canAddToCart: (id: number, qty: number) => boolean;
   showToast: (opts: {
     variant: AlertVariant;
@@ -42,7 +46,7 @@ export default function DesktopOrderSummary({
   showToast,
   showComboEditor,
   setShowComboEditor,
-  paymentMethod
+  paymentMethod,
 }: DesktopOrderSummaryProps) {
   return (
     <div className="hidden lg:block">
@@ -130,6 +134,10 @@ export default function DesktopOrderSummary({
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-sm mb-1">{item.name}</p>
+                  {item.type === "product" && item.variation && (
+                    <p>{item.variation.name}</p>
+                  )}
+
                   <p className="text-sm text-gray-600">
                     ₹ {item.price.toFixed(2)}
                   </p>
@@ -195,7 +203,18 @@ export default function DesktopOrderSummary({
                           return;
                         }
                         removeCouponAndProduct();
-                        removeItem(item.id);
+                        if (item.type === "product") {
+                          if (item.variation) {
+                            removeItem({
+                              id: item.id,
+                              variation: item.variation,
+                            });
+                          } else {
+                            removeItem({ id: item.id });
+                          }
+                        } else {
+                          removeItem({ id: item.id });
+                        }
                       }}
                     >
                       <X className="w-3 h-3" />

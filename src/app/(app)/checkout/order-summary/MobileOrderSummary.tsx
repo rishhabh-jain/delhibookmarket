@@ -3,7 +3,6 @@
 import React, { memo } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import { motion } from "framer-motion";
 import {
   Collapsible,
   CollapsibleContent,
@@ -17,7 +16,6 @@ import {
   Minus,
   Plus,
   X,
-  Edit3,
 } from "lucide-react";
 import { ComboItem, CartItem } from "@/app/types"; // adjust import path
 import { ComboEditorModal } from "@/components/combo/ComboEditorModel";
@@ -41,7 +39,12 @@ interface MobileOrderSummaryProps {
   removeCouponAndProduct: () => void;
   updateQuantity: (id: number, qty: number) => void;
   canAddToCart: (id: number, qty: number) => boolean;
-  removeItem: (id: number) => void;
+  removeItem: (payload: {
+    id: number;
+    variation?: {
+      id: number;
+    };
+  }) => void;
   showComboEditor: boolean;
   setShowComboEditor: (open: boolean) => void;
 }
@@ -64,7 +67,6 @@ const MobileOrderSummary: React.FC<MobileOrderSummaryProps> = ({
   showComboEditor,
   setShowComboEditor,
 }) => {
-
   return (
     <div className="lg:hidden mb-6">
       <Collapsible open={showOrderSummary} onOpenChange={setShowOrderSummary}>
@@ -166,6 +168,9 @@ const MobileOrderSummary: React.FC<MobileOrderSummaryProps> = ({
                         <p className="text-sm text-gray-600">
                           ₹ {item.price.toFixed(2)}
                         </p>
+                        {item.type === "product" && item.variation && (
+                          <p>{item.variation.name}</p>
+                        )}
 
                         {/* Quantity Controls */}
                         <div className="flex items-center gap-2 mt-2">
@@ -232,7 +237,17 @@ const MobileOrderSummary: React.FC<MobileOrderSummaryProps> = ({
                                 return;
                               }
                               removeCouponAndProduct();
-                              removeItem(item.id);
+                              if (item.type === "product") {
+                                if (item.variation) {
+                                  removeItem({
+                                    id: item.id,
+                                    variation: item.variation,
+                                  });
+                                }
+                                removeItem({ id: item.id });
+                              } else {
+                                removeItem({ id: item.id });
+                              }
                             }}
                           >
                             <X className="w-3 h-3" />
@@ -241,11 +256,11 @@ const MobileOrderSummary: React.FC<MobileOrderSummaryProps> = ({
                       </div>
 
                       {/* Combo Editor */}
-                        <ComboEditorModal
-                          isOpen={showComboEditor}
-                          onClose={() => setShowComboEditor(false)}
-                          combo={combo!}
-                        />
+                      <ComboEditorModal
+                        isOpen={showComboEditor}
+                        onClose={() => setShowComboEditor(false)}
+                        combo={combo!}
+                      />
 
                       {/* Item Total */}
                       <div className="text-right">

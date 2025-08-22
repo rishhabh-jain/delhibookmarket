@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Link from "next/link";
@@ -21,6 +22,7 @@ import { motion } from "framer-motion";
 import { CartItem, CartItemUnion, ComboItem } from "@/app/types";
 import Image from "next/image";
 import { ComboEditorModal } from "@/components/combo/ComboEditorModel";
+import MysteryBookCard from "@/components/MysteryBook";
 
 interface CartItemComponentProps {
   item: CartItemUnion;
@@ -30,6 +32,8 @@ interface CartItemComponentProps {
 // Mock useCart hook - replace with your actual implementation
 export default function CartClient() {
   const { items, total, itemCount } = useCart();
+
+  console.log(items);
 
   // const handleQuantityChange = (item: CartItem, newQuantity: number) => {
   //   if (newQuantity > item.stock_quantity && item.stock_status === "instock") {
@@ -129,10 +133,10 @@ export default function CartClient() {
           <div className="grid lg:grid-cols-3 gap-4 lg:gap-8">
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-              {items.map((item) => {
+              {items.map((item,index) => {
                 // const slug = item.permalink.split("/").filter(Boolean).pop();
                 return (
-                  <CartItemComponent key={item.id} item={item} showControls />
+                  <CartItemComponent key={index} item={item} showControls />
                 );
               })}
 
@@ -157,51 +161,60 @@ export default function CartClient() {
 
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <Card className="lg:sticky lg:top-4">
-                <CardContent className="p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold mb-4">
-                    Order Summary
-                  </h2>
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between text-sm sm:text-base">
-                      <span>Subtotal ({itemCount} items)</span>
+              <div className="lg:sticky lg:top-4">
+                <div className="lg:sticky my-4">
+                  <MysteryBookCard />
+                </div>
+                <Card className="">
+                  <CardContent className="p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-4">
+                      Order Summary
+                    </h2>
+                    <div className="space-y-3 mb-4">
+                      <div className="flex justify-between text-sm sm:text-base">
+                        <span>Subtotal ({itemCount} items)</span>
+                        <span>₹{total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
+                        <span>Tax</span>
+                        <span>Calculated at checkout</span>
+                      </div>
+                       <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
+                        <span>Discount</span>
+                        <span>Applied at checkout</span>
+                      </div>
+                    </div>
+                    <Separator className="my-4" />
+                    <div className="flex justify-between text-base sm:text-lg font-semibold mb-4 sm:mb-6">
+                      <span>Total</span>
                       <span>₹{total.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-                      <span>Tax</span>
-                      <span>Calculated at checkout</span>
+
+                    {/* Desktop Delivery Checker */}
+                    <div className="hidden lg:block mb-6">
+                      <DeliveryChecker />
                     </div>
-                  </div>
-                  <Separator className="my-4" />
-                  <div className="flex justify-between text-base sm:text-lg font-semibold mb-4 sm:mb-6">
-                    <span>Total</span>
-                    <span>₹{total.toFixed(2)}</span>
-                  </div>
 
-                  {/* Desktop Delivery Checker */}
-                  <div className="hidden lg:block mb-6">
-                    <DeliveryChecker />
-                  </div>
+                    <Link href="/checkout">
+                      <Button
+                        size="lg"
+                        className="w-full h-12 text-base font-medium"
+                        // disabled={items.some(
+                        //   (item) => item.stock_status === "outofstock"
+                        // )}
+                      >
+                        Proceed to Checkout
+                      </Button>
+                    </Link>
 
-                  <Link href="/checkout">
-                    <Button
-                      size="lg"
-                      className="w-full h-12 text-base font-medium"
-                      // disabled={items.some(
-                      //   (item) => item.stock_status === "outofstock"
-                      // )}
-                    >
-                      Proceed to Checkout
-                    </Button>
-                  </Link>
-
-                  {/* {items.some((item) => item.stock_status === "outofstock") && (
+                    {/* {items.some((item) => item.stock_status === "outofstock") && (
                     <p className="text-xs sm:text-sm text-destructive mt-2 text-center">
                       Please remove out-of-stock items to continue
                     </p>
                   )} */}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
@@ -253,7 +266,15 @@ const CartItemComponent: React.FC<CartItemComponentProps> = ({
   };
 
   const handleRemove = () => {
-    removeItem(item.id);
+    if (item.type === "product") {
+      if (item.variation) {
+        removeItem({ id: item.id, variation: item.variation });
+      } else {
+        removeItem({ id: item.id });
+      }
+    } else {
+      removeItem({ id: item.id });
+    }
   };
 
   const isCombo = item.type === "combo";
@@ -342,23 +363,40 @@ const CartItemComponent: React.FC<CartItemComponentProps> = ({
               </span>
             )}
 
-            {/* Name */}
-            {/* {item.type === "combo" && (
-              
-            )} */}
-
+            {/* Only render link if item is a product and has permalink */}
             {item.type === "product" && (
               <Link
                 href={
                   item.permalink.split("/").filter(Boolean).pop() ??
                   item.permalink
                 }
-              ></Link>
+              >
+                <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
+                  {item.name}
+                </h3>
+                {item.variation && <p>{item.variation.name} </p>}
+              </Link>
             )}
 
-            <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
-              {item.name}
-            </h3>
+            {!item.type && (
+              <Link
+                href={
+                  (item as any).permalink.split("/").filter(Boolean).pop() ??
+                  (item as any).permalink
+                }
+              >
+                <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
+                  {(item as any).name}
+                </h3>
+              </Link>
+            )}
+
+            {/* Render plain name for combos */}
+            {item.type === "combo" && (
+              <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
+                {item.name}
+              </h3>
+            )}
 
             {/* Combo Details */}
             {isCombo && combo && (
@@ -421,7 +459,7 @@ const CartItemComponent: React.FC<CartItemComponentProps> = ({
                 )}
               </div>
 
-              {showControls && (
+              {showControls &&  (
                 <div className="flex items-center gap-2">
                   {/* Quantity */}
                   <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">

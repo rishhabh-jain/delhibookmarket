@@ -1,10 +1,6 @@
 //Full product type definition
 interface ProductImage {
   id: number;
-  date_created: string;
-  date_created_gmt: string;
-  date_modified: string;
-  date_modified_gmt: string;
   src: string;
   name: string;
   alt: string;
@@ -21,6 +17,10 @@ export interface FullProduct {
   slug: string;
   stock_quantity: number;
   isPromotional?: boolean;
+  variation?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface ProductPage {
@@ -32,16 +32,7 @@ export interface ProductPage {
   sale_price: string;
   description: string;
   short_description: string;
-  images: {
-    id: number;
-    date_created: string;
-    date_created_gmt: string;
-    date_modified: string;
-    date_modified_gmt: string;
-    src: string;
-    name: string;
-    alt: string;
-  }[];
+  images: ProductImage[];
   stock_quantity: number;
   categories: {
     id: number;
@@ -52,6 +43,10 @@ export interface ProductPage {
   rating_count: number;
   stock_status: string;
   isPromotional?: boolean;
+  variation?: {
+    id: number;
+    name: string;
+  };
 }
 
 //related product which will be coming from the API , SUPABASE RELATED PRODUCTS
@@ -83,6 +78,10 @@ export interface CartItem {
   permalink: string;
   isPromotional?: boolean;
   type: "product"; // Distinguish from combo
+  variation?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 // Combo Item Interface
@@ -100,12 +99,13 @@ export interface ComboItem {
 
 export type CartItemUnion = CartItem | ComboItem;
 
- export interface LineItem {
-    product_id: number;
-    quantity: number;
-    total?: string;
-    subtotal?: string;
-    total_tax?: string;
-    subtotal_tax?: string;
-    type?: string; // Added type to handle both product and combo
-  }
+export interface LineItem {
+  product_id: number;
+  quantity: number;
+  total?: string;
+  subtotal?: string;
+  total_tax?: string;
+  subtotal_tax?: string;
+  type?: string; // Added type to handle both product and combo
+  variation_id?:number
+}

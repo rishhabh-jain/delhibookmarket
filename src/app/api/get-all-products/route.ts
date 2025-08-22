@@ -11,19 +11,22 @@ export async function GET() {
     let moreData = true;
 
     while (moreData) {
-      const wpRes = await axios.get("https://shop.delhibookmarket.com/wp-json/wp/v2/product", {
-        params: {
-          per_page: perPage,
-          page,
-          status: "any",
-             catalog_visibility: "any", // Include all visibility settings
-          type: "any", // Include all product types
-        },
-        auth: {
-          username: process.env.WC_CONSUMER_KEY!,
-          password: process.env.WC_CONSUMER_SECRET!,
-        },
-      });
+      const wpRes = await axios.get(
+        "https://shop.delhibookmarket.com/wp-json/wp/v2/product",
+        {
+          params: {
+            per_page: perPage,
+            page,
+            status: "any",
+            catalog_visibility: "any", // Include all visibility settings
+            type: "any", // Include all product types
+          },
+          auth: {
+            username: process.env.WC_CONSUMER_KEY!,
+            password: process.env.WC_CONSUMER_SECRET!,
+          },
+        }
+      );
 
       const products = wpRes.data;
       allProducts.push(...products);

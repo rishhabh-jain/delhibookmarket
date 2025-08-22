@@ -16,13 +16,13 @@ import Footer from "@/components/home/Footer";
 import { Chaty } from "@/components/header-footer/Chaty";
 import Header from "@/components/header-footer/Header";
 import Link from "next/link";
+import GiftWrapperScene from "@/components/giftWrapperScene";
 
 export default function HomeClient() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <Header />
-
       {/* Flash Sale Banner */}
       <Link href="/product-category/self-help">
         <section className="container mx-auto px-4 lg:px-6 my-2">

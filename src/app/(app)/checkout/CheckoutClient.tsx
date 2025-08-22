@@ -42,6 +42,7 @@ import { LineItem, ProductPage, PromoCode } from "@/app/types";
 import MobileOrderSummary from "./order-summary/MobileOrderSummary";
 import DesktopOrderSummary from "./order-summary/DesktopOrderSummary";
 import { useTest } from "@/hooks/useTest";
+import { pincodeChecker } from "@/utils/pincodeChecker";
 
 interface RazorpayOptions {
   key: string;
@@ -128,11 +129,13 @@ export default function CheckoutPage() {
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors },
   } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
   });
 
+  const pincode = watch("postcode");
   const emailValue = watch("email"); // this will give you the current value of 'email'
   const shippingCost = appliedCoupon?.code === "freeshipping" ? 0 : 39;
   const COD_CHARGES = paymentMethod === "cod" ? 50 : 0;
@@ -317,7 +320,7 @@ export default function CheckoutPage() {
         first_name: data.first_name,
         last_name: data.last_name,
         address_1: data.address_1,
-        address_2 : data.address_2,
+        address_2: data.address_2,
         city: data.city,
         state: data.state,
         postcode: data.postcode,
@@ -336,6 +339,8 @@ export default function CheckoutPage() {
         postcode: data.postcode,
         country: data.country,
       };
+
+      console.log("CART ITEMS",items)
 
       const LINE_ITEMS = items.flatMap((item) => {
         if (!item.type as any) {
@@ -367,6 +372,10 @@ export default function CheckoutPage() {
             lineItem.subtotal = "0";
             lineItem.subtotal_tax = "0";
             lineItem.total_tax = "0";
+          }
+
+          if (item.variation) {
+            lineItem.variation_id = item.variation.id;
           }
 
           return [lineItem];
@@ -511,7 +520,7 @@ export default function CheckoutPage() {
 
     // Then remove the product
     if (currentAppliedProduct) {
-      removeItem(currentAppliedProduct.id);
+      removeItem({ id: currentAppliedProduct.id });
     }
   }, [appliedCouponProduct, removeItem]);
 
@@ -618,7 +627,32 @@ export default function CheckoutPage() {
     }
   }, [createAccount]);
 
-  // useTest(reset);
+  useEffect(() => {
+    const fetchPincode = async () => {
+      if (pincode && /^\d{6}$/.test(pincode)) {
+        try {
+          const record = await pincodeChecker(pincode);
+          console.log(record);
+          console.log(record.statename);
+          const stateName =
+            record.statename[0] + record.statename.slice(1).toLowerCase();
+          console.log(stateName);
+          if (record) {
+            setValue("city", record.districtname, { shouldValidate: true });
+            setValue("state", stateName, { shouldValidate: true });
+          }
+        } catch (err) {
+          console.error("Pincode fetch failed:", err);
+          setValue("city", "");
+          setValue("state", "");
+        }
+      }
+    };
+
+    fetchPincode();
+  }, [pincode, setValue]);
+
+  useTest(reset);
 
   const isInitialProcessed = useRef(false);
 
@@ -629,7 +663,7 @@ export default function CheckoutPage() {
       const promotionalItem = items.find((item) => item.isPromotional);
       if (promotionalItem) {
         console.log("Removing promotional item:", promotionalItem.name);
-        removeItem(promotionalItem.id);
+        removeItem({ id: promotionalItem.id });
       }
 
       isInitialProcessed.current = true; // Run only once!
@@ -773,16 +807,6 @@ export default function CheckoutPage() {
                 )}
 
                 <Input
-                  placeholder="Town / City *"
-                  className="h-12"
-                  {...register("city")}
-                />
-                {errors.city && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.city.message}
-                  </p>
-                )}
-                <Input
                   placeholder="Postcode *"
                   className="h-12"
                   {...register("postcode")}
@@ -792,6 +816,18 @@ export default function CheckoutPage() {
                     {errors.postcode.message}
                   </p>
                 )}
+
+                <Input
+                  placeholder="Town / City *"
+                  className="h-12"
+                  {...register("city")}
+                />
+                {errors.city && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.city.message}
+                  </p>
+                )}
+
                 <Controller
                   name="country"
                   control={control}
@@ -998,7 +1034,7 @@ export default function CheckoutPage() {
                       onClick={(e) => {
                         e.preventDefault();
                         if (appliedCoupon && appliedCouponProduct) {
-                          removeItem(appliedCouponProduct.id);
+                          removeItem({ id: appliedCouponProduct.id });
                         }
                         showToast({
                           variant: "info",

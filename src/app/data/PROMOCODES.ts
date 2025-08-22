@@ -55,7 +55,7 @@ export const PROMOCODES = [
     exclude_sale_items: false,
     minimum_amount: "999.00",
     maximum_amount: "0.00",
-    email_restrictions: []
+    email_restrictions: [],
   },
   {
     id: 42789,
@@ -83,7 +83,7 @@ export const PROMOCODES = [
     exclude_sale_items: false,
     minimum_amount: "599.00",
     maximum_amount: "0.00",
-    email_restrictions: []
+    email_restrictions: [],
   },
   {
     id: 41354,
@@ -112,7 +112,6 @@ export const PROMOCODES = [
     minimum_amount: "499.00",
     maximum_amount: "0.00",
     email_restrictions: [],
-   
   },
   {
     id: 38381,
@@ -200,7 +199,7 @@ export const PROMOCODES = [
   },
 ];
 
-export function getCoupon(code: string) : PromoCode | null {
+export function getCoupon(code: string): PromoCode | null {
   const promocode = PROMOCODES.find((coupon) => coupon.code === code) || null;
   if (!promocode) {
     return null;
@@ -328,4 +327,528 @@ export const FREE_DIARY = {
   rating_count: 0,
   stock_status: "instock" as "instock" | "outofstock" | "onbackorder",
   isPromotional: true,
+};
+
+export const SURPRISE_BOOK = {
+  id: 64515,
+  name: "Surprise book",
+  permalink: "https://shop.delhibookmarket.com/surprise-book/",
+  price: "",
+  regular_price: "",
+  sale_price: "",
+  description:
+    "\u003Cp\u003EThis is a surprise book where we will give you a mystery book based on the category you choose!\u003C/p\u003E\n",
+  short_description: "",
+  images: [],
+  stock_quantity: null,
+  categories: [
+    {
+      id: 15,
+      name: "Uncategorized",
+      slug: "uncategorized",
+    },
+  ],
+  tags: [],
+  variations: [
+    {
+      id: 64523,
+      type: "variation",
+      date_created: "2025-08-21T12:10:15",
+      date_created_gmt: "2025-08-21T06:40:15",
+      date_modified: "2025-08-21T12:10:15",
+      date_modified_gmt: "2025-08-21T06:40:15",
+      description: "",
+      permalink:
+        "https://shop.delhibookmarket.com/surprise-book/?attribute_category=ANY",
+      sku: "SKU2310",
+      global_unique_id: "",
+      price: "",
+      regular_price: "",
+      sale_price: "",
+      date_on_sale_from: null,
+      date_on_sale_from_gmt: null,
+      date_on_sale_to: null,
+      date_on_sale_to_gmt: null,
+      on_sale: false,
+      status: "publish",
+      purchasable: false,
+      virtual: false,
+      downloadable: false,
+      downloads: [],
+      download_limit: -1,
+      download_expiry: -1,
+      tax_status: "taxable",
+      tax_class: "",
+      manage_stock: false,
+      stock_quantity: null,
+      stock_status: "instock",
+      backorders: "no",
+      backorders_allowed: false,
+      backordered: false,
+      low_stock_amount: null,
+      weight: "0.3",
+      dimensions: {
+        length: "12",
+        width: "12",
+        height: "12",
+      },
+      shipping_class: "",
+      shipping_class_id: 0,
+      image: null,
+      attributes: [
+        {
+          id: 0,
+          name: "Category",
+          slug: "category",
+          option: "ANY",
+        },
+      ],
+      menu_order: 6,
+      meta_data: [],
+      name: "ANY",
+      parent_id: 64515,
+      _links: {
+        self: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations/64523",
+            targetHints: {
+              allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            },
+          },
+        ],
+        collection: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations",
+          },
+        ],
+        up: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+          },
+        ],
+      },
+    },
+    {
+      id: 64522,
+      type: "variation",
+      date_created: "2025-08-21T12:10:14",
+      date_created_gmt: "2025-08-21T06:40:14",
+      date_modified: "2025-08-21T12:10:14",
+      date_modified_gmt: "2025-08-21T06:40:14",
+      description: "",
+      permalink:
+        "https://shop.delhibookmarket.com/surprise-book/?attribute_category=Kids",
+      sku: "SKU2310",
+      global_unique_id: "",
+      price: "",
+      regular_price: "",
+      sale_price: "",
+      date_on_sale_from: null,
+      date_on_sale_from_gmt: null,
+      date_on_sale_to: null,
+      date_on_sale_to_gmt: null,
+      on_sale: false,
+      status: "publish",
+      purchasable: false,
+      virtual: false,
+      downloadable: false,
+      downloads: [],
+      download_limit: -1,
+      download_expiry: -1,
+      tax_status: "taxable",
+      tax_class: "",
+      manage_stock: false,
+      stock_quantity: null,
+      stock_status: "instock",
+      backorders: "no",
+      backorders_allowed: false,
+      backordered: false,
+      low_stock_amount: null,
+      weight: "0.3",
+      dimensions: {
+        length: "12",
+        width: "12",
+        height: "12",
+      },
+      shipping_class: "",
+      shipping_class_id: 0,
+      image: null,
+      attributes: [
+        {
+          id: 0,
+          name: "Category",
+          slug: "category",
+          option: "Kids",
+        },
+      ],
+      menu_order: 5,
+      meta_data: [],
+      name: "Kids",
+      parent_id: 64515,
+      _links: {
+        self: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations/64522",
+            targetHints: {
+              allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            },
+          },
+        ],
+        collection: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations",
+          },
+        ],
+        up: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+          },
+        ],
+      },
+    },
+    {
+      id: 64521,
+      type: "variation",
+      date_created: "2025-08-21T12:10:14",
+      date_created_gmt: "2025-08-21T06:40:14",
+      date_modified: "2025-08-21T12:10:14",
+      date_modified_gmt: "2025-08-21T06:40:14",
+      description: "",
+      permalink:
+        "https://shop.delhibookmarket.com/surprise-book/?attribute_category=Non+fiction",
+      sku: "SKU2310",
+      global_unique_id: "",
+      price: "",
+      regular_price: "",
+      sale_price: "",
+      date_on_sale_from: null,
+      date_on_sale_from_gmt: null,
+      date_on_sale_to: null,
+      date_on_sale_to_gmt: null,
+      on_sale: false,
+      status: "publish",
+      purchasable: false,
+      virtual: false,
+      downloadable: false,
+      downloads: [],
+      download_limit: -1,
+      download_expiry: -1,
+      tax_status: "taxable",
+      tax_class: "",
+      manage_stock: false,
+      stock_quantity: null,
+      stock_status: "instock",
+      backorders: "no",
+      backorders_allowed: false,
+      backordered: false,
+      low_stock_amount: null,
+      weight: "0.3",
+      dimensions: {
+        length: "12",
+        width: "12",
+        height: "12",
+      },
+      shipping_class: "",
+      shipping_class_id: 0,
+      image: null,
+      attributes: [
+        {
+          id: 0,
+          name: "Category",
+          slug: "category",
+          option: "Non fiction",
+        },
+      ],
+      menu_order: 4,
+      meta_data: [],
+      name: "NON FICTION",
+      parent_id: 64515,
+      _links: {
+        self: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations/64521",
+            targetHints: {
+              allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            },
+          },
+        ],
+        collection: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations",
+          },
+        ],
+        up: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+          },
+        ],
+      },
+    },
+    {
+      id: 64520,
+      type: "variation",
+      date_created: "2025-08-21T12:10:13",
+      date_created_gmt: "2025-08-21T06:40:13",
+      date_modified: "2025-08-21T12:10:13",
+      date_modified_gmt: "2025-08-21T06:40:13",
+      description: "",
+      permalink:
+        "https://shop.delhibookmarket.com/surprise-book/?attribute_category=Mystery+%26+Thriller",
+      sku: "SKU2310",
+      global_unique_id: "",
+      price: "",
+      regular_price: "",
+      sale_price: "",
+      date_on_sale_from: null,
+      date_on_sale_from_gmt: null,
+      date_on_sale_to: null,
+      date_on_sale_to_gmt: null,
+      on_sale: false,
+      status: "publish",
+      purchasable: false,
+      virtual: false,
+      downloadable: false,
+      downloads: [],
+      download_limit: -1,
+      download_expiry: -1,
+      tax_status: "taxable",
+      tax_class: "",
+      manage_stock: false,
+      stock_quantity: null,
+      stock_status: "instock",
+      backorders: "no",
+      backorders_allowed: false,
+      backordered: false,
+      low_stock_amount: null,
+      weight: "0.3",
+      dimensions: {
+        length: "12",
+        width: "12",
+        height: "12",
+      },
+      shipping_class: "",
+      shipping_class_id: 0,
+      image: null,
+      attributes: [
+        {
+          id: 0,
+          name: "Category",
+          slug: "category",
+          option: "Mystery & Thriller",
+        },
+      ],
+      menu_order: 3,
+      meta_data: [],
+      name: "Mystery & Thriller",
+      parent_id: 64515,
+      _links: {
+        self: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations/64520",
+            targetHints: {
+              allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            },
+          },
+        ],
+        collection: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations",
+          },
+        ],
+        up: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+          },
+        ],
+      },
+    },
+    {
+      id: 64519,
+      type: "variation",
+      date_created: "2025-08-21T12:10:11",
+      date_created_gmt: "2025-08-21T06:40:11",
+      date_modified: "2025-08-21T12:10:11",
+      date_modified_gmt: "2025-08-21T06:40:11",
+      description: "",
+      permalink:
+        "https://shop.delhibookmarket.com/surprise-book/?attribute_category=Romance",
+      sku: "SKU2310",
+      global_unique_id: "",
+      price: "",
+      regular_price: "",
+      sale_price: "",
+      date_on_sale_from: null,
+      date_on_sale_from_gmt: null,
+      date_on_sale_to: null,
+      date_on_sale_to_gmt: null,
+      on_sale: false,
+      status: "publish",
+      purchasable: false,
+      virtual: false,
+      downloadable: false,
+      downloads: [],
+      download_limit: -1,
+      download_expiry: -1,
+      tax_status: "taxable",
+      tax_class: "",
+      manage_stock: false,
+      stock_quantity: null,
+      stock_status: "instock",
+      backorders: "no",
+      backorders_allowed: false,
+      backordered: false,
+      low_stock_amount: null,
+      weight: "0.3",
+      dimensions: {
+        length: "12",
+        width: "12",
+        height: "12",
+      },
+      shipping_class: "",
+      shipping_class_id: 0,
+      image: null,
+      attributes: [
+        {
+          id: 0,
+          name: "Category",
+          slug: "category",
+          option: "Romance",
+        },
+      ],
+      menu_order: 2,
+      meta_data: [],
+      name: "ROMANCE",
+      parent_id: 64515,
+      _links: {
+        self: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations/64519",
+            targetHints: {
+              allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            },
+          },
+        ],
+        collection: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations",
+          },
+        ],
+        up: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+          },
+        ],
+      },
+    },
+    {
+      id: 64518,
+      type: "variation",
+      description: "",
+      permalink:
+        "https://shop.delhibookmarket.com/surprise-book/?attribute_category=Teen",
+      sku: "SKU2310",
+      global_unique_id: "",
+      price: "",
+      regular_price: "",
+      sale_price: "",
+      date_on_sale_from: null,
+      date_on_sale_from_gmt: null,
+      date_on_sale_to: null,
+      date_on_sale_to_gmt: null,
+      on_sale: false,
+      status: "publish",
+      purchasable: false,
+      virtual: false,
+      downloadable: false,
+      downloads: [],
+      download_limit: -1,
+      download_expiry: -1,
+      tax_status: "taxable",
+      tax_class: "",
+      manage_stock: false,
+      stock_quantity: null,
+      stock_status: "instock",
+      backorders: "no",
+      backorders_allowed: false,
+      backordered: false,
+      low_stock_amount: null,
+      weight: "0.3",
+      dimensions: {
+        length: "12",
+        width: "12",
+        height: "12",
+      },
+      shipping_class: "",
+      shipping_class_id: 0,
+      image: null,
+      attributes: [
+        {
+          id: 0,
+          name: "Category",
+          slug: "category",
+          option: "Teen",
+        },
+      ],
+      menu_order: 1,
+      meta_data: [],
+      name: "Teen",
+      parent_id: 64515,
+      _links: {
+        self: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations/64518",
+            targetHints: {
+              allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            },
+          },
+        ],
+        collection: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515/variations",
+          },
+        ],
+        up: [
+          {
+            href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+          },
+        ],
+      },
+    },
+  ],
+  attributes: [
+    {
+      id: 0,
+      name: "Category",
+      slug: "Category",
+      position: 0,
+      visible: true,
+      variation: true,
+      options: [
+        "Teen",
+        "Romance",
+        "Mystery & Thriller",
+        "Non fiction",
+        "Kids",
+        "ANY",
+      ],
+    },
+  ],
+  average_rating: "0.00",
+  rating_count: 0,
+  stock_status: "instock",
+  _links: {
+    self: [
+      {
+        href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products/64515",
+        targetHints: {
+          allow: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+        },
+      },
+    ],
+    collection: [
+      {
+        href: "https://shop.delhibookmarket.com/wp-json/wc/v3/products",
+      },
+    ],
+  },
 };

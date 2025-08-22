@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X, AlertTriangle, Package, Minus, Plus, Trash2 } from "lucide-react";
+import {  AlertTriangle, Package, Minus, Plus, Trash2 } from "lucide-react";
 import { CartItemUnion } from "@/app/types";
 import { useCart } from "@/context/CartContext";
 import {
@@ -36,7 +36,12 @@ interface StockCheckModalProps {
   outOfStockList: StockIssueItem[];
   cartItems: CartItemUnion[];
   updateQuantity: (id: number, quantity: number) => void;
-  removeItem: (id: number) => void;
+ removeItem: (payload: {
+    id: number;
+    variation?: {
+      id: number;
+    };
+  }) => void;
   onContinue?: () => void;
 }
 
@@ -100,7 +105,7 @@ const StockCheckModal: React.FC<StockCheckModalProps> = ({
         variant: "success",
       });
     } else {
-      removeItem(productId);
+      removeItem({id : productId});
       showToast({
         message: "Item removed from cart",
         variant: "success",
@@ -129,7 +134,7 @@ const StockCheckModal: React.FC<StockCheckModalProps> = ({
           message: "Item removed from cart, cart has been updated",
           variant: "success",
         });
-        removeItem(item.product_id);
+        removeItem({id : item.product_id});
       }
     });
 
